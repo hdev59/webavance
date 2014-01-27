@@ -73,8 +73,8 @@
     </head>
     <body onload="init();" ng-controller="ProgressMainCtrl">
 	<div class="container">
-		<br/>		<div id="slider" class="ui-slider"></div>
-<br/>
+		<br/>
+		<div id="masterVolumeSlider" class="ui-slider" style="width:200px"></div>
 		<div class="col-xs-1">
 			<button class="btn btn-block btn-lg btn-primary" id="bplaypause" disabled><span class="glyphicon glyphicon-play"></span></button>
 		</div>
@@ -82,7 +82,7 @@
         <div class="col-xs-1">
 			<button class="btn btn-block btn-lg btn-primary" id="bstop" onclick="stopAllTracks();" disabled><span class="glyphicon glyphicon-stop"></span></button>
 		</div>
-        Master Volume : <input type="range" id ="masterVolume" min="0" max="100" value="100" oninput="changeMasterVolume(this);">
+        Master Volume : 
         
 		  
         <div id="songs" style="width:300px;display:inline-block;"></div>
@@ -117,17 +117,5 @@
     <script src="js/jquery.placeholder.js"></script>
     <script src="js/jquery.stacktable.js"></script>
 	<script src="js/application.js"></script>
-	<script type="text/javascript">
-		var $slider = $("#slider");
-		if ($slider.length > 0) {
-		  $slider.slider({
-			min: 1,
-			max: 5,
-			value: 3,
-			orientation: "horizontal",
-			range: "min"
-		  }).addSliderSegments($slider.slider("option").max);
-		}
-	</script>
     </body>
 </html>

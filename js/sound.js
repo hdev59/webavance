@@ -16,6 +16,8 @@ var trackVolumeSliders = [];
 
 var buttonPlay, buttonStop;
 var masterVolumeSlider;
+var masterVolumeSliderValue;
+
 // List of tracks and mute buttons
 var divTrack;
 
@@ -145,9 +147,6 @@ function init() {
         // will compute time from mouse pos and start playing from there...
         jumpTo(mousePos);
     })
-
-    // Master volume slider
-    masterVolumeSlider = document.querySelector("#masterVolume");
 
     // Init audio context
     context = initAudioContext();
@@ -299,7 +298,7 @@ resetAllBeforeLoadingANewSong();
             var imageURL = "track/" + songName + "/visualisation/" + instrument.visualisation;
 
             span.innerHTML = 
-                    "<div class='trackDiv vertical-align'><div ><button id='mute" + trackNumber + "' class='btn btn-block btn-lg btn-primary' onclick='muteUnmuteTrack(" + trackNumber + ");'><span class='glyphicon glyphicon-volume-up'></span> " + instrument.name + "</button></div><br/><input type='range' id='trackVolumeSlider"+ trackNumber +"' min='0' max='100' value='100' oninput='setTrackVolume("+ trackNumber +")';></div>"
+                    "<div class='trackDiv vertical-align'><div ><button id='mute" + trackNumber + "' class='btn btn-block btn-lg btn-primary' onclick='muteUnmuteTrack(" + trackNumber + ");'><span class='glyphicon glyphicon-volume-up'></span> " + instrument.name + "</button></div><br/><div class='ui-slider' id='trackVolumeSlider"+ trackNumber +"' min='0' max='100' value='100' oninput='setTrackVolume("+ trackNumber +")';></div>"
 					
                     /*
                     +
@@ -548,7 +547,9 @@ console.log("pauseAllTracks");
 
 function setMasterVolume() {
 
-   var fraction = parseInt(masterVolumeSlider.value) / parseInt(masterVolumeSlider.max);
+	
+   var fraction = parseInt(masterVolumeSliderValue) / parseInt(100);
+   console.log("Volume fraction = " + fraction);
     // Let's use an x*x curve (x-squared) since simple linear (x) does not
     // sound as good.
     if( masterVolumeNode != undefined)
@@ -590,4 +591,23 @@ $(document).ready(function() {
 	$("#bplaypause").click(function() {
 		playOrPause($(this));
 	});
+	
+	$(".ui-slider-range").change(function() {
+		console.log("Modified sound : " + $(this).css('width'));
+	});
+	
+	masterVolumeSlider = $("#masterVolumeSlider");
+    if (masterVolumeSlider.length) {
+      masterVolumeSlider.slider({
+        min: 0,
+        max: 100,
+        value: 100,
+        orientation: "horizontal",
+        range: "min",
+		slide: function(event, ui) {
+			masterVolumeSliderValue = ui.value;
+			changeMasterVolume();
+		}
+      }).addSliderSegments(masterVolumeSlider.slider("option").max);
+    }
 });

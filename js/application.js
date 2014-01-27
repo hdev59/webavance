@@ -40,19 +40,7 @@ String.prototype.repeat = function(num) {
     $("[data-toggle=tooltip]").tooltip("show");
 
     // Tags Input
-    $(".tagsinput").tagsInput();
-
-    // jQuery UI Sliders
-    var $slider = $("#slider");
-    if ($slider.length) {
-      $slider.slider({
-        min: 1,
-        max: 5,
-        value: 2,
-        orientation: "horizontal",
-        range: "min"
-      }).addSliderSegments($slider.slider("option").max);
-    }
+    $(".tagsinput").tagsInput();  
 
     var $verticalSlider = $("#vertical-slider");
     if ($verticalSlider.length) {
