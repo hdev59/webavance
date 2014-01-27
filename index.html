@@ -1,0 +1,133 @@
+﻿<!DOCTYPE html>
+<html ng-app="progressApp">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+        <title>Web Audio API: Simple load + play</title>
+        <script src="js/libs/jquery-1.9.0/jquery.min.js"></script>
+        <script src="js/angular.min.js"></script>
+		<script src="js/ngProgress.min.js"></script>
+        <script src="js/buffer-loader.js"></script>
+        <script src="js/sound.js"></script>
+
+		<link href="bootstrap/css/bootstrap.css" rel="stylesheet">
+		<link href="css/flat-ui.css" rel="stylesheet">	
+		<link rel="stylesheet" href="css/ngProgress.css" >
+		
+        <style>
+            #myCanvas, #frontCanvas {
+                position                    : absolute;
+                top                         : 200px;
+                left                        : 31.5%;
+            }
+			
+            #myCanvas {
+                background:black;
+            }
+			
+			#tracks {
+				position: absolute;
+				top: 200px;
+			}
+			
+			.trackDiv {
+				height:100px;
+				border: 1px black solid;
+			}
+			
+			.green {
+				color:green;
+			}
+			
+			.red {
+				color:red;
+			}
+			
+			.vertical-align {
+				/* Internet Explorer 10 */
+				display:-ms-flexbox;
+				-ms-flex-pack:center;
+				-ms-flex-align:center;
+
+				/* Firefox */
+				display:-moz-box;
+				-moz-box-pack:center;
+				-moz-box-align:center;
+
+				/* Safari, Opera, and Chrome */
+				display:-webkit-box;
+				-webkit-box-pack:center;
+				-webkit-box-align:center;
+
+				/* W3C */
+				display:box;
+				box-pack:center;
+				box-align:center;
+			}
+            .sample {
+                border: solid white 1px;
+                background:black;
+            }
+		
+        </style>
+    </head>
+    <body onload="init();" ng-controller="ProgressMainCtrl">
+	<div class="container">
+		<br/>		<div id="slider" class="ui-slider"></div>
+<br/>
+		<div class="col-xs-1">
+			<button class="btn btn-block btn-lg btn-primary" id="bplaypause" disabled><span class="glyphicon glyphicon-play"></span></button>
+		</div>
+		
+        <div class="col-xs-1">
+			<button class="btn btn-block btn-lg btn-primary" id="bstop" onclick="stopAllTracks();" disabled><span class="glyphicon glyphicon-stop"></span></button>
+		</div>
+        Master Volume : <input type="range" id ="masterVolume" min="0" max="100" value="100" oninput="changeMasterVolume(this);">
+        
+		  
+        <div id="songs" style="width:300px;display:inline-block;"></div>
+		<br/>
+		<div style="clear:both"></div>
+		<div id="tracksDisplay">
+			<canvas id="myCanvas" width="800" height="400"></canvas>
+		</div>
+
+			<div class="col-xs-3">
+            <button class="btn btn-block btn-lg btn-primary" onclick="loadSong()">Load tracklist</button>
+		</div>
+		<div style="clear:both"><br/></div>
+        <div id="tracks" class="col-xs-3">
+        </div>
+		
+		<!-- update progressBar while loading tracklist, used by JS in buffer-loader.js -->
+		<input id="ngProgressCounter" type="number" ng-model="counter" style="display:none">
+		<button id="setProgress" href="#demo" ng-click="setWidth(counter, $event)" style="display:none" />
+		
+	</div>
+	
+	
+    <script src="js/jquery-ui-1.10.3.custom.min.js"></script>
+    <script src="js/jquery.ui.touch-punch.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/bootstrap-select.js"></script>
+    <script src="js/bootstrap-switch.js"></script>
+    <script src="js/flatui-checkbox.js"></script>
+    <script src="js/flatui-radio.js"></script>
+    <script src="js/jquery.tagsinput.js"></script>
+    <script src="js/jquery.placeholder.js"></script>
+    <script src="js/jquery.stacktable.js"></script>
+	<script src="js/application.js"></script>
+	<script type="text/javascript">
+		var $slider = $("#slider");
+		if ($slider.length > 0) {
+		  $slider.slider({
+			min: 1,
+			max: 5,
+			value: 3,
+			orientation: "horizontal",
+			range: "min"
+		  }).addSliderSegments($slider.slider("option").max);
+		}
+	</script>
+    </body>
+</html>
