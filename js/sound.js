@@ -48,7 +48,7 @@ var delta;
 var elapsedTimeSinceStart = 0;
 
 var paused = true;
-
+var playedOnce = false;
 
 // Frequency spectrum
 var frequencySpectrumCanvas;
@@ -199,8 +199,8 @@ function initAudioContext() {
 
 
 function resetAllBeforeLoadingANewSong() {
-    // Marche pas, c'est pour tester...
     console.log('resetAllBeforeLoadingANewSong');
+	playedOnce = false;
     // reset array of tracks. If we don't do this we just add new samples to existing
     // ones... playing two songs at the same time etc.
     tracks = [];
@@ -403,7 +403,6 @@ function createTrackCanvas(trackNumber) {
 	canvas.parentNode.appendChild(trackCanvas[0]);
 
 	trackCanvas[0].addEventListener("mousedown", function(event) {
-        console.log("mouse click on canvas, let's jump to another position in the song")
         var mousePos = getMousePos(trackCanvas[0], event);
         // will compute time from mouse pos and start playing from there...
         jumpTo(mousePos);
@@ -411,6 +410,7 @@ function createTrackCanvas(trackNumber) {
 }
 
 function deleteTracksCanvas() {
+	// Remove canvas loaded for each track
 	var i = 0;
 	for ( var i = 0; i < tracksCanvas.length; i++) {
 		tracksCanvas[i].remove();
@@ -446,7 +446,7 @@ function getMousePos(canvas, evt) {
     var totalTime = buffers[0].duration;
     var startTime = (mousePos.x * totalTime) / frontCanvas.width;
 	elapsedTimeSinceStart = startTime;
-    playAllTracks(startTime);
+    playFrom(startTime);
  }
 
 function animateTime() {
@@ -462,11 +462,9 @@ function animateTime() {
         frontCtx.fillStyle = 'white';
         frontCtx.font = '14pt Arial';
         frontCtx.fillText(elapsedTimeSinceStart.toPrecision(4), 100, 20);
-        //console.log("dans animate");
 
         // at least one track has been loaded
         if (buffers[0] != undefined) {
-
             var totalTime = buffers[0].duration;
 			if (elapsedTimeSinceStart <= totalTime) {
 				var x = elapsedTimeSinceStart * canvas.width / totalTime;
@@ -481,9 +479,11 @@ function animateTime() {
 				elapsedTimeSinceStart += delta;
 				lastTime = currentTime;
 			} else if (loop == true) {
+				// End of song and loop activated, restart playing song from beginning
 				stopAllTracks();
-				playAllTracks(0);
+				playFrom(0);
 			} else {
+				// End of song and loop deactivated, stop playing
 				stopAllTracks();
 			}
 		}
@@ -517,11 +517,8 @@ function drawSampleImage(imageURL, trackNumber, trackName) {
 }
 
 function resizeSampleCanvas(numTracks) {
-    canvas.height = SAMPLE_HEIGHT * numTracks;
+    canvas.height = (parseInt(SAMPLE_HEIGHT) + parseInt(SAMPLE_MARGIN)) * numTracks;
     frontCanvas.height = canvas.height;
-}
-function clearAllSampleDrawings() {
-    //ctx.clearRect(0,0, canvas.width, canvas.height);
 }
 
 function loadSong() {
@@ -530,11 +527,12 @@ function loadSong() {
 }
 
 function playAllTracks(startTime) {
-    buildGraph(buffers);
-
+	// Build audio nodes from BufferSource to speakers
+	if (playedOnce == false) {
+		buildGraph(buffers);
+	}
+	// Start playing song
     playFrom(startTime);
-
-  
 }
 
 // Same as previous one except that we not rebuild the graph. Useful for jumping from one
@@ -610,8 +608,8 @@ console.log("pauseAllTracks");
         paused = true;
    } else {
         paused = false;
-// we were in pause, let's start again from where we paused
-        playAllTracks(elapsedTimeSinceStart);
+		// we were in pause, let's start again from where we paused
+        playFrom(elapsedTimeSinceStart);
     }
 }
 
