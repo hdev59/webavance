@@ -16,7 +16,6 @@ var trackVolumeSliders = [];
 
 var buttonPlay, buttonStop;
 var masterVolumeSlider;
-var masterVolumeSliderValue;
 
 // List of tracks and mute buttons
 var divTrack;
@@ -30,6 +29,9 @@ var tracksCtx = [];
 // Sample size in pixels
 var SAMPLE_HEIGHT = 100;
 var SAMPLE_MARGIN = 0;
+var MAX_VOLUME = 100;
+
+var masterVolumeSliderValue = MAX_VOLUME;
 
 // Useful for memorizing when we paused the song
 var lastTime = 0;
@@ -298,7 +300,7 @@ resetAllBeforeLoadingANewSong();
             var imageURL = "track/" + songName + "/visualisation/" + instrument.visualisation;
 
             span.innerHTML = 
-                    "<div class='trackDiv vertical-align'><div ><button id='mute" + trackNumber + "' class='btn btn-block btn-lg btn-primary' onclick='muteUnmuteTrack(" + trackNumber + ");'><span class='glyphicon glyphicon-volume-up'></span> " + instrument.name + "</button></div><br/><div class='ui-slider' id='trackVolumeSlider"+ trackNumber +"' min='0' max='100' value='100' oninput='setTrackVolume("+ trackNumber +")';></div>"
+                    "<div class='trackDiv vertical-align'><div><button id='mute" + trackNumber + "' class='btn btn-block btn-lg btn-primary' onclick='muteUnmuteTrack(" + trackNumber + ");'><span class='glyphicon glyphicon-volume-up'></span> " + instrument.name + "</button></div><div class='ui-slider' class='trackVolumeSlider' id='trackVolumeSlider"+ trackNumber +"' style='width:200px'></div>"
 					
                     /*
                     +
@@ -309,6 +311,19 @@ resetAllBeforeLoadingANewSong();
 			
             drawSampleImage(imageURL, trackNumber, instrument.name);
             divTrack.appendChild(span);
+			var trackVolumeSlider = $("#trackVolumeSlider"+ trackNumber);
+			trackVolumeSlider.attr('data-track-number', trackNumber);
+			trackVolumeSlider.slider({
+				min: 0,
+				max: 100,
+				value: 100,
+				orientation: "horizontal",
+				range: "min",
+				slide: function(event, ui) {
+					setTrackVolume($(this), ui.value);
+				}
+			  }).addSliderSegments(trackVolumeSlider.slider("option").max);
+			
 			trackVolumeSliders[trackNumber] = document.querySelector("#trackVolumeSlider" + trackNumber);
 			
             // Audio
@@ -499,9 +514,13 @@ function playFrom(startTime) {
 }
 
 function stopAllTracks() {
+	console.log("stopAllTracks");
     samples.forEach(function(s) {
-// destroy the nodes
-        s.stop(0);
+		console.log(s);
+		// destroy the nodes
+		if (s.playbackState != s.FINISHED_STATE) {
+			s.stop(0);
+		}
     });
     buttonStop.disabled = true;
     buttonPlay.disabled = false;
@@ -515,6 +534,7 @@ function stopAllTracks() {
 }
 
 function playOrPause(button) {
+	buttonStop.disabled = false;
 	console.log("playOrPause");
 	var buttonSpan = button.children("span");
 	if (buttonSpan.hasClass("glyphicon-play")) {
@@ -538,7 +558,7 @@ console.log("pauseAllTracks");
             s.stop(0);
         });
         paused = true;
-    } else {
+   } else {
         paused = false;
 // we were in pause, let's start again from where we paused
         playAllTracks(elapsedTimeSinceStart);
@@ -547,8 +567,7 @@ console.log("pauseAllTracks");
 
 function setMasterVolume() {
 
-	
-   var fraction = parseInt(masterVolumeSliderValue) / parseInt(100);
+   var fraction = parseInt(masterVolumeSliderValue) / parseInt(MAX_VOLUME);
    console.log("Volume fraction = " + fraction);
     // Let's use an x*x curve (x-squared) since simple linear (x) does not
     // sound as good.
@@ -557,8 +576,11 @@ function setMasterVolume() {
 }
 
 
-function setTrackVolume(trackNumber) {
-	var fraction = parseInt(trackVolumeSliders[trackNumber].value) / parseInt(trackVolumeSliders[trackNumber].max);
+function setTrackVolume(trackVolumeSlider, volume) {
+	var trackNumber = trackVolumeSlider.attr('data-track-number');
+	console.log('Set track ' + trackNumber + ' volume ' + volume);
+	var fraction = parseInt(volume) / parseInt(MAX_VOLUME);
+	
 	if (trackVolumeNodes[trackNumber] != undefined) 
 		trackVolumeNodes[trackNumber].gain.value = fraction * fraction;
 }
@@ -584,6 +606,14 @@ function muteUnmuteTrack(trackNumber) {
     }
 
 
+}
+
+function setLoop() {
+	if (trackVolumesNodes.length) {
+		for (var i = 0; i < trackVolumesNodes.length; i++) {
+			trackVolumesNodes[i].loop = true;
+		}
+	}
 }
 
 
