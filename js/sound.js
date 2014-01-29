@@ -9,15 +9,27 @@ var tracks = [];
 var buffers = []; // audio buffers decoded
 var samples = []; // audiograph nodes
 
-// Master volume
+var loop = false;
+
+// Volume
+var MAX_VOLUME = 100;
+
 var masterVolumeNode;
 var trackVolumeNodes = [];
-var trackVolumeSliders = [];
 
-var buttonPlay, buttonStop;
+// Channel splitter
+var channelSplitter;
+// default channel count to stereo
+var DEFAULT_CHANNEL_COUNT = 2;
+
+// Volume sliders
 var masterVolumeSlider;
+var trackVolumeSliders = [];
+var masterVolumeSliderValue = MAX_VOLUME;
 
-// List of tracks and mute buttons
+var buttonPlay, buttonStop, buttonLoop, buttonMonoStereo;
+
+// divTrack containing track sample, mute button, volume slider
 var divTrack;
 
 var canvas, ctx;
@@ -29,9 +41,6 @@ var tracksCtx = [];
 // Sample size in pixels
 var SAMPLE_HEIGHT = 100;
 var SAMPLE_MARGIN = 0;
-var MAX_VOLUME = 100;
-
-var masterVolumeSliderValue = MAX_VOLUME;
 
 // Useful for memorizing when we paused the song
 var lastTime = 0;
@@ -42,8 +51,16 @@ var elapsedTimeSinceStart = 0;
 
 var paused = true;
 
+
+// Frequency spectrum
+var frequencySpectrumCanvas;
+var frequencySpectrumCtx;
+var FREQUENCY_SPECTRUM_WIDTH = 300;
+var FREQUENCY_SPECTRUM_HEIGHT = 100;
+
+// ngProgress progress bar
 var progressApp = angular.module('progressApp', ['ngProgress']);
-	
+
 var ProgressMainCtrl = function($scope, $timeout, ngProgress) {
         $scope.name = 'Lars';
         $scope.show = false;
@@ -124,7 +141,9 @@ function init() {
     // Get handles on buttons
     buttonPlay = document.querySelector("#bplaypause");
     buttonStop = document.querySelector("#bstop");
-
+	buttonLoop = document.querySelector("#bloop");
+	buttonMonoStereo = document.querySelector("#bmonostereo");
+	
     divTrack = document.getElementById("tracks");
 
 
@@ -190,6 +209,7 @@ function resetAllBeforeLoadingANewSong() {
 
     stopAllTracks();
     buttonPlay.disabled = true;
+	buttonLoop.disabled = true;
     divTrack.innerHTML="";
     /*
     samples.forEach(function(s) {
@@ -215,12 +235,45 @@ function finishedLoading(bufferList) {
     
     buffers = bufferList;
     buttonPlay.disabled = false;
+	buttonLoop.disabled = false;
 }
 
 function buildGraph(bufferList) {
     var sources = [];
     // Create a single gain node for master volume
     masterVolumeNode = context.createGain();
+    
+	// Create a channel splitter		
+	channelSplitter = context.createChannelSplitter();
+	
+	// channelCount is used to help compute computedNumberOfChannels
+	// computedNumberOfChannels representing the actual number of channels of the input at any given time
+	channelSplitter.channelCount = DEFAULT_CHANNEL_COUNT;
+	
+	// channelCountMode determines how computedNumberOfChannels will be computed. Once this number is computed, all of the connections 
+	// will be up or down-mixed to that many channels
+	// value “explicit”: computedNumberOfChannels is the exact value as specified in channelCount
+	channelSplitter.channelCountMode = "explicit";
+	
+	// Connect the master volume to the channel splitter
+    masterVolumeNode.connect(channelSplitter);
+	// Connect the channel splitter to the speakers
+	channelSplitter.connect(context.destination);
+	buttonMonoStereo.disabled = false;
+	
+	// setup a javascript node
+    javascriptNode = context.createJavaScriptNode(2048, 1, 1);
+    // connect to destination, else it isn't called
+    javascriptNode.connect(context.destination);
+	
+	// setup a analyzer
+    analyser = context.createAnalyser();
+    analyser.smoothingTimeConstant = 0.3;
+    analyser.fftSize = 512;
+ 
+	masterVolumeNode.connect(analyser);
+	analyser.connect(javascriptNode);
+	initializeFrequencySpectrum();
     console.log("in build graph, bufferList.size = " + bufferList.length);
     bufferList.forEach(function(sample, i) {
 // each sound sample is the  source of a graph
@@ -232,15 +285,13 @@ function buildGraph(bufferList) {
         sources[i].connect(trackVolumeNodes[i]);
         // Connects all track volume nodes a single master volume node
         trackVolumeNodes[i].connect(masterVolumeNode);
-        // Connect the master volume to the speakers
-        masterVolumeNode.connect(context.destination);
 		
+	
 		// Connect the analyser to the source
 		analysers[i] = context.createAnalyser();
 		sources[i].connect(analysers[i]);
 		analysers[i].connect(trackVolumeNodes[i]);
 		
-        // On active les boutons start et stop
         samples = sources;
     })
 }
@@ -437,6 +488,9 @@ function animateTime() {
 
 				elapsedTimeSinceStart += delta;
 				lastTime = currentTime;
+			} else if (loop == true) {
+				stopAllTracks();
+				playAllTracks(0);
 			} else {
 				stopAllTracks();
 			}
@@ -496,7 +550,10 @@ function playAllTracks(startTime) {
 function playFrom(startTime) {
   // Read current master volume slider position and set the volume
   setMasterVolume()
-
+  	if ($("#bplaypause span").hasClass('glyphicon-play')) {
+		$("#bplaypause span").removeClass('glyphicon-play');
+	}
+	$("#bplaypause span").addClass('glyphicon-pause');
 
   samples.forEach(function(s) {
 // First parameter is the delay before playing the sample
@@ -518,7 +575,8 @@ function stopAllTracks() {
     samples.forEach(function(s) {
 		console.log(s);
 		// destroy the nodes
-		if (s.playbackState != s.FINISHED_STATE) {
+		console.log("playbackState : " + s.playbackState);
+		if (s.playbackState == undefined || s.playbackState != s.FINISHED_STATE) {
 			s.stop(0);
 		}
     });
@@ -609,17 +667,39 @@ function muteUnmuteTrack(trackNumber) {
 }
 
 function setLoop() {
-	if (trackVolumesNodes.length) {
-		for (var i = 0; i < trackVolumesNodes.length; i++) {
-			trackVolumesNodes[i].loop = true;
-		}
+	if (loop == true) {
+		console.log("deactivate loop");
+		loop = false;
+	} else {
+		console.log("activate loop");
+		loop = true;
 	}
+}
+
+function setChannelCountToMono() {
+	console.log("Setting channelCount to 1");
+	channelSplitter.channelCount = 1;
+}
+
+function setChannelCountToStereo() {
+	console.log("Setting channelCount to 2");
+	channelSplitter.channelCount = 2;
 }
 
 
 $(document).ready(function() {
 	$("#bplaypause").click(function() {
 		playOrPause($(this));
+	});
+	
+	$("#bmonostereo").click(function() {
+		if ($(this).text() == "stereo") {
+			setChannelCountToStereo();
+			$(this).text("mono");
+		} else if ($(this).text() == "mono") {
+			setChannelCountToMono();
+			$(this).text("stereo");
+		}
 	});
 	
 	$(".ui-slider-range").change(function() {
@@ -641,3 +721,39 @@ $(document).ready(function() {
       }).addSliderSegments(masterVolumeSlider.slider("option").max);
     }
 });
+
+// http://css.dzone.com/articles/exploring-html5-web-audio
+	function initializeFrequencySpectrum() {
+		frequencySpectrumCanvas = document.querySelector("#frequency-spectrum-canvas");
+		frequencySpectrumCtx = frequencySpectrumCanvas.getContext('2d');
+		var gradient = frequencySpectrumCtx.createLinearGradient(0,0,0,FREQUENCY_SPECTRUM_HEIGHT);
+		gradient.addColorStop(1,'#000000');
+		gradient.addColorStop(0.75,'#ff0000');
+		gradient.addColorStop(0.25,'#ffff00');
+		gradient.addColorStop(0,'#ffffff');
+
+		// when the javascript node is called
+		// we use information from the analyzer node
+		// to draw the volume
+		javascriptNode.onaudioprocess = function() {
+			// get the average for the first channel
+			var array =  new Uint8Array(analyser.frequencyBinCount);
+			analyser.getByteFrequencyData(array);
+
+			// clear the current state
+			frequencySpectrumCtx.clearRect(0, 0, FREQUENCY_SPECTRUM_WIDTH, FREQUENCY_SPECTRUM_HEIGHT);
+
+			// set the fill style
+			frequencySpectrumCtx.fillStyle=gradient;
+			drawSpectrum(array);
+		}
+	}
+
+	function drawSpectrum(array) {
+		for ( var i = 0; i < (array.length); i++ ){
+			var value = array[i];
+			//console.log("Spectrum value : " + value);
+			frequencySpectrumCtx.fillRect(i*2,FREQUENCY_SPECTRUM_HEIGHT * 2-value,1,FREQUENCY_SPECTRUM_HEIGHT);
+		}
+	}
+
