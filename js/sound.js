@@ -1,6 +1,4 @@
 var context;
-var oscillator;
-var analysers = [];
 
 var source = null;
 var audioBuffer = null;
@@ -285,13 +283,7 @@ function buildGraph(bufferList) {
         sources[i].connect(trackVolumeNodes[i]);
         // Connects all track volume nodes a single master volume node
         trackVolumeNodes[i].connect(masterVolumeNode);
-		
-	
-		// Connect the analyser to the source
-		analysers[i] = context.createAnalyser();
-		sources[i].connect(analysers[i]);
-		analysers[i].connect(trackVolumeNodes[i]);
-		
+
         samples = sources;
     })
 }
