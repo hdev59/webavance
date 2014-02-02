@@ -46,6 +46,7 @@ BufferLoader.prototype.loadBuffer = function(url, index) {
 					// End draw sample image
 					
                     loader.bufferList[index] = buffer;
+					console.log("Buffer = " + buffer);
                     console.log("In bufferLoader.onload bufferList size is " + loader.bufferList.length + " index =" + index);
 					
 					// ngProgress : modify counter and update progress bar

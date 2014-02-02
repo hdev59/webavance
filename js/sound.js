@@ -1,11 +1,12 @@
 var context;
 
 var source = null;
-var audioBuffer = null;
 // Les echantillons prêts à être joués, de toutes les pistes
 var tracks = [];
 var buffers = []; // audio buffers decoded
 var samples = []; // audiograph nodes
+
+var currentEffectNodes = [];
 
 var loop = false;
 
@@ -13,6 +14,8 @@ var loop = false;
 var MAX_VOLUME = 100;
 
 var masterVolumeNode;
+var wetGain;
+
 var trackVolumeNodes = [];
 
 // Channel splitter
@@ -204,7 +207,6 @@ function resetAllBeforeLoadingANewSong() {
     // reset array of tracks. If we don't do this we just add new samples to existing
     // ones... playing two songs at the same time etc.
     tracks = [];
-
     stopAllTracks();
     buttonPlay.disabled = true;
 	buttonLoop.disabled = true;
@@ -215,6 +217,14 @@ function resetAllBeforeLoadingANewSong() {
         s.disconnect(0);
     });*/
 	deleteTracksCanvas();
+	resetEffectNodes();
+}
+
+function resetEffectNodes() {
+	for (var i =0; i < currentEffectNodes.length; i++) {
+		currentEffectNodes[i].disconnect();
+	}
+	currentEffectNodes = [];
 }
 
 var bufferLoader;
@@ -240,7 +250,7 @@ function buildGraph(bufferList) {
     var sources = [];
     // Create a single gain node for master volume
     masterVolumeNode = context.createGain();
-    
+	wetGain = context.createGain();
 	// Create a channel splitter		
 	channelSplitter = context.createChannelSplitter();
 	
@@ -270,6 +280,7 @@ function buildGraph(bufferList) {
     analyser.fftSize = 512;
  
 	masterVolumeNode.connect(analyser);
+	console.log("MasterVolumeNode " + masterVolumeNode);
 	analyser.connect(javascriptNode);
 	initializeFrequencySpectrum();
     console.log("in build graph, bufferList.size = " + bufferList.length);
@@ -277,15 +288,16 @@ function buildGraph(bufferList) {
 // each sound sample is the  source of a graph
         sources[i] = context.createBufferSource();
         sources[i].buffer = sample;
+		console.log("Sample : " + sample);
         // connect each sound sample to a vomume node
         trackVolumeNodes[i] = context.createGain();
         // Connect the sound sample to its volume node
         sources[i].connect(trackVolumeNodes[i]);
         // Connects all track volume nodes a single master volume node
-        trackVolumeNodes[i].connect(masterVolumeNode);
-
+		trackVolumeNodes[i].connect(wetGain);
         samples = sources;
     })
+	wetGain.connect(masterVolumeNode);
 }
 
 // ######### SONGS

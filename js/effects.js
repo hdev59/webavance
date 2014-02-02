@@ -1,8 +1,9 @@
-var audioContext = new AudioContext();
+var convolvers = [];
+var currentEffectNodes = [];
+
 var audioInput = null,
     realAudioInput = null,
     effectInput = null,
-    wetGain = null,
     dryGain = null,
     outputMix = null,
     currentEffectNode = null,
@@ -40,7 +41,8 @@ var audioInput = null,
     awDepth = null,
     awFilter = null,
     ngFollower = null,
-    ngGate = null;
+    ngGate = null,
+	waveshaper = null;
 
 
 var rafID = null;
@@ -48,8 +50,8 @@ var analyser1;
 var analyserView1;
 
 function convertToMono( input ) {
-    var splitter = audioContext.createChannelSplitter(2);
-    var merger = audioContext.createChannelMerger(2);
+    var splitter = context.createChannelSplitter(2);
+    var merger = context.createChannelMerger(2);
 
     input.connect( splitter );
     splitter.connect( merger, 0, 0 );
@@ -77,7 +79,7 @@ var lpInputFilter=null;
 // this is ONLY because we have massive feedback without filtering out
 // the top end in live speaker scenarios.
 function createLPInputFilter(output) {
-    lpInputFilter = audioContext.createBiquadFilter();
+    lpInputFilter = context.createBiquadFilter();
     lpInputFilter.frequency.value = 2048;
     return lpInputFilter;
 }
@@ -103,11 +105,11 @@ var useFeedbackReduction = true;
 
 function gotStream(stream) {
     // Create an AudioNode from the stream.
-//    realAudioInput = audioContext.createMediaStreamSource(stream);
-    var input = audioContext.createMediaStreamSource(stream);
+//    realAudioInput = context.createMediaStreamSource(stream);
+    var input = context.createMediaStreamSource(stream);
 
 /*
-    realAudioInput = audioContext.createBiquadFilter();
+    realAudioInput = context.createBiquadFilter();
     realAudioInput.frequency.value = 60.0;
     realAudioInput.type = realAudioInput.NOTCH;
     realAudioInput.Q = 10.0;
@@ -122,58 +124,21 @@ function gotStream(stream) {
         
     }
     // create mix gain nodes
-    outputMix = audioContext.createGain();
-    dryGain = audioContext.createGain();
-    wetGain = audioContext.createGain();
-    effectInput = audioContext.createGain();
+    outputMix = context.createGain();
+    dryGain = context.createGain();
+    wetGain = context.createGain();
+    effectInput = context.createGain();
     audioInput.connect(dryGain);
     audioInput.connect(analyser1);
     audioInput.connect(effectInput);
     dryGain.connect(outputMix);
     wetGain.connect(outputMix);
-    outputMix.connect( audioContext.destination);
+    outputMix.connect( context.destination);
     outputMix.connect(analyser2);
     crossfade(1.0);
     changeEffect(0);
     updateAnalysers();
 }
-
-function initAudio() {
-    var irRRequest = new XMLHttpRequest();
-    irRRequest.open("GET", "sounds/cardiod-rear-levelled.wav", true);
-    irRRequest.responseType = "arraybuffer";
-    irRRequest.onload = function() {
-        audioContext.decodeAudioData( irRRequest.response, 
-            function(buffer) { reverbBuffer = buffer; } );
-    }
-    irRRequest.send();
-
-    o3djs.require('o3djs.shader');
-
-    analyser1 = audioContext.createAnalyser();
-    analyser1.fftSize = 1024;
-    analyser2 = audioContext.createAnalyser();
-    analyser2.fftSize = 1024;
-
-    analyserView1 = new AnalyserView("view1");
-    analyserView1.initByteBuffer( analyser1 );
-    analyserView2 = new AnalyserView("view2");
-    analyserView2.initByteBuffer( analyser2 );
-
-    if (!navigator.getUserMedia)
-        navigator.getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-
-    if (!navigator.getUserMedia)
-        return(alert("Error: getUserMedia not supported!"));
-
-    navigator.getUserMedia({audio:true}, gotStream, function(e) {
-            alert('Error getting audio');
-            console.log(e);
-        });
-}
-
-window.addEventListener('load', initAudio );
-
 
 function crossfade(value) {
   // equal-power crossfade
@@ -223,11 +188,17 @@ function changeEffect(effect) {
     ngFollower = null;
     ngGate = null;
 
-    if (currentEffectNode) 
-        currentEffectNode.disconnect();
     if (effectInput)
         effectInput.disconnect();
 
+	if (currentEffectNode)
+		currentEffectNode.disconnect();
+	
+	for (var i = 0; i < currentEffectNodes.length; i++) {
+		currentEffectNodes[i].disconnect();
+	}
+	currentEffectNodes = [];
+	
     var effectControls = document.getElementById("controls");
     if (lastEffect > -1)
         effectControls.children[lastEffect].classList.remove("display");
@@ -239,7 +210,7 @@ function changeEffect(effect) {
             currentEffectNode = createDelay();
             break;
         case 1: // Reverb
-            currentEffectNode = createReverb();
+            currentEffectNodes = createReverb();
             break;
         case 2: // Distortion
             currentEffectNode = createDistortion();
@@ -272,7 +243,7 @@ function changeEffect(effect) {
             currentEffectNode = createModDelay();
             break;
         case 12: // Ping-pong delay
-            var pingPong = createPingPongDelay(audioContext, (audioInput == realAudioInput), 0.3, 0.4 );
+            var pingPong = createPingPongDelay(context, (audioInput == realAudioInput), 0.3, 0.4 );
             pingPong.output.connect( wetGain );
             currentEffectNode = pingPong.input;
             break;
@@ -289,7 +260,7 @@ function changeEffect(effect) {
             currentEffectNode = createNoiseGate();
             break;
         case 17: // Wah Bass
-            var pingPong = createPingPongDelay(audioContext, (audioInput == realAudioInput), 0.5, 0.5 );
+            var pingPong = createPingPongDelay(context, (audioInput == realAudioInput), 0.5, 0.5 );
             pingPong.output.connect( wetGain );
             pingPong.input.connect(wetGain);
             var tempWetGain = wetGain;
@@ -312,7 +283,17 @@ function changeEffect(effect) {
         default:
             break;
     }
-    audioInput.connect( currentEffectNode );
+
+	if (currentEffectNode) {
+		console.log("Connecting an effect to masterVolumeNode");
+		masterVolumeNode.connect(currentEffectNode);
+	}
+	for (var i=0; i < currentEffectNodes.length; i++) {
+		console.log("Connecting an effect to trackVolumeNode " + i);
+		trackVolumeNodes[i].connect(currentEffectNodes[i]);
+	}
+	
+	
 }
 
 
@@ -320,16 +301,16 @@ function changeEffect(effect) {
 
 function createTelephonizer() {
     // I double up the filters to get a 4th-order filter = faster fall-off
-    var lpf1 = audioContext.createBiquadFilter();
+    var lpf1 = context.createBiquadFilter();
     lpf1.type = lpf1.LOWPASS;
     lpf1.frequency.value = 2000.0;
-    var lpf2 = audioContext.createBiquadFilter();
+    var lpf2 = context.createBiquadFilter();
     lpf2.type = lpf2.LOWPASS;
     lpf2.frequency.value = 2000.0;
-    var hpf1 = audioContext.createBiquadFilter();
+    var hpf1 = context.createBiquadFilter();
     hpf1.type = hpf1.HIGHPASS;
     hpf1.frequency.value = 500.0;
-    var hpf2 = audioContext.createBiquadFilter();
+    var hpf2 = context.createBiquadFilter();
     hpf2.type = hpf2.HIGHPASS;
     hpf2.frequency.value = 500.0;
     lpf1.connect( lpf2 );
@@ -343,13 +324,13 @@ function createTelephonizer() {
 function createDelay() {
     var delayNode = null;
     if (window.location.search.substring(1) == "webkit")
-        delayNode = audioContext.createDelayNode();
+        delayNode = context.createDelayNode();
     else
-        delayNode = audioContext.createDelay();
+        delayNode = context.createDelay();
     delayNode.delayTime.value = parseFloat( document.getElementById("dtime").value );
     dtime = delayNode;
 
-    var gainNode = audioContext.createGain();
+    var gainNode = context.createGain();
     gainNode.gain.value = parseFloat( document.getElementById("dregen").value );
     dregen = gainNode;
 
@@ -361,27 +342,30 @@ function createDelay() {
 }
 
 function createReverb() {
-    var convolver = audioContext.createConvolver();
-    convolver.buffer = reverbBuffer; // impulseResponse( 2.5, 2.0 );  // reverbBuffer;
-    convolver.connect( wetGain );
-    return convolver;
+	for (var i=0; i <  samples.length; i++) {
+		convolvers[i] = context.createConvolver();
+		convolvers[i].buffer = samples[i];
+		convolvers[i].connect(trackVolumeNodes[i]);
+	}
+	return convolvers;
 }
 
-var waveshaper = null;
-
 function createDistortion() {
-    if (!waveshaper)
-        waveshaper = new WaveShaper( audioContext );
+	var effectNode;
+    if (!waveshaper) {
+		waveshaper = new WaveShaper( context );
+	}
+	waveshaper.output.connect( wetGain);
+	waveshaper.setDrive(0.5);
+	effectNode = waveshaper.input;
 
-    waveshaper.output.connect( wetGain );
-    waveshaper.setDrive(5.0);
-    return waveshaper.input;
+	return effectNode;
 }
 
 function createGainLFO() {
-    var osc = audioContext.createOscillator();
-    var gain = audioContext.createGain();
-    var depth = audioContext.createGain();
+    var osc = context.createOscillator();
+    var gain = context.createGain();
+    var depth = context.createGain();
 
     osc.type = parseInt(document.getElementById("lfotype").value);
     osc.frequency.value = parseFloat( document.getElementById("lfo").value );
@@ -403,21 +387,24 @@ function createGainLFO() {
 }
 
 function createFilterLFO() {
-    var osc = audioContext.createOscillator();
-    var gainMult = audioContext.createGain();
-    var gain = audioContext.createGain();
-    var filter = audioContext.createBiquadFilter();
+    var osc = context.createOscillator();
+    var gainMult = context.createGain();
+    var gain = context.createGain();
+    var filter = context.createBiquadFilter();
 
     filter.type = filter.LOWPASS;
     filter.Q.value = parseFloat( document.getElementById("lplfoq").value );
+	console.log("createFilterLFO, filter.Q.value = " + filter.Q.value);
     lplfofilter = filter;
 
     osc.type = osc.SINE;
     osc.frequency.value = parseFloat( document.getElementById("lplfo").value );
+	console.log("createFilterLFO, osc.frequency.value = " + osc.frequency.value);
     osc.connect( gain );
 
     filter.frequency.value = 2500;  // center frequency - this is kinda arbitrary.
     gain.gain.value = 2500 * parseFloat( document.getElementById("lplfodepth").value );
+	console.log("createFilterLFO, gain value = " + gain.gain.value);
     // this should make the -1 - +1 range of the osc translate to 0 - 5000Hz, if
     // depth == 1.
 
@@ -431,9 +418,9 @@ function createFilterLFO() {
 }
 
 function createRingmod() {
-    var gain = audioContext.createGain();
-    var ring = audioContext.createGain();
-    var osc = audioContext.createOscillator();
+    var gain = context.createGain();
+    var ring = context.createGain();
+    var osc = context.createOscillator();
 
     osc.type = osc.SINE;
     rmod = osc;
@@ -450,14 +437,14 @@ function createRingmod() {
 var awg = null;
 
 function createChorus() {
-    var delayNode = audioContext.createDelay();
+    var delayNode = context.createDelay();
     delayNode.delayTime.value = parseFloat( document.getElementById("cdelay").value );
     cdelay = delayNode;
 
-    var inputNode = audioContext.createGain();
+    var inputNode = context.createGain();
 
-    var osc = audioContext.createOscillator();
-    var gain = audioContext.createGain();
+    var osc = context.createOscillator();
+    var gain = context.createGain();
 
     gain.gain.value = parseFloat( document.getElementById("cdepth").value ); // depth of change to the delay:
     cdepth = gain;
@@ -480,14 +467,14 @@ function createChorus() {
 }
 
 function createVibrato() {
-    var delayNode = audioContext.createDelay();
+    var delayNode = context.createDelay();
     delayNode.delayTime.value = parseFloat( document.getElementById("vdelay").value );
     cdelay = delayNode;
 
-    var inputNode = audioContext.createGain();
+    var inputNode = context.createGain();
 
-    var osc = audioContext.createOscillator();
-    var gain = audioContext.createGain();
+    var osc = context.createOscillator();
+    var gain = context.createGain();
 
     gain.gain.value = parseFloat( document.getElementById("vdepth").value ); // depth of change to the delay:
     cdepth = gain;
@@ -506,14 +493,14 @@ function createVibrato() {
 }
 
 function createFlange() {
-    var delayNode = audioContext.createDelay();
+    var delayNode = context.createDelay();
     delayNode.delayTime.value = parseFloat( document.getElementById("fldelay").value );
     fldelay = delayNode;
 
-    var inputNode = audioContext.createGain();
-    var feedback = audioContext.createGain();
-    var osc = audioContext.createOscillator();
-    var gain = audioContext.createGain();
+    var inputNode = context.createGain();
+    var feedback = context.createGain();
+    var osc = context.createOscillator();
+    var gain = context.createGain();
     gain.gain.value = parseFloat( document.getElementById("fldepth").value );
     fldepth = gain;
 
@@ -539,15 +526,15 @@ function createFlange() {
 }
 
 function createStereoChorus() {
-    var splitter = audioContext.createChannelSplitter(2);
-    var merger = audioContext.createChannelMerger(2);
-    var inputNode = audioContext.createGain();
+    var splitter = context.createChannelSplitter(2);
+    var merger = context.createChannelMerger(2);
+    var inputNode = context.createGain();
 
     inputNode.connect( splitter );
     inputNode.connect( wetGain );
 
-    var delayLNode = audioContext.createDelay();
-    var delayRNode = audioContext.createDelay();
+    var delayLNode = context.createDelay();
+    var delayRNode = context.createDelay();
     delayLNode.delayTime.value = parseFloat( document.getElementById("scdelay").value );
     delayRNode.delayTime.value = parseFloat( document.getElementById("scdelay").value );
     scldelay = delayLNode;
@@ -555,9 +542,9 @@ function createStereoChorus() {
     splitter.connect( delayLNode, 0 );
     splitter.connect( delayRNode, 1 );
 
-    var osc = audioContext.createOscillator();
-    scldepth = audioContext.createGain();
-    scrdepth = audioContext.createGain();
+    var osc = context.createOscillator();
+    scldepth = context.createGain();
+    scrdepth = context.createGain();
 
     scldepth.gain.value = parseFloat( document.getElementById("scdepth").value ); // depth of change to the delay:
     scrdepth.gain.value = - parseFloat( document.getElementById("scdepth").value ); // depth of change to the delay:
@@ -591,25 +578,25 @@ function createStereoChorus() {
 */
 function createModDelay() {
     // Create input node for incoming audio
-    var inputNode = audioContext.createGain();
+    var inputNode = context.createGain();
 
     // SET UP DELAY NODE
-    var delayNode = audioContext.createDelay();
+    var delayNode = context.createDelay();
     delayNode.delayTime.value = parseFloat( document.getElementById("mdtime").value );
     mdtime = delayNode;
 
-    var feedbackGainNode = audioContext.createGain();
+    var feedbackGainNode = context.createGain();
     feedbackGainNode.gain.value = parseFloat( document.getElementById("mdfeedback").value );
     mdfeedback = feedbackGainNode;
 
 
     // SET UP CHORUS NODE
-    var chorus = audioContext.createDelay();
+    var chorus = context.createDelay();
     chorus.delayTime.value = parseFloat( document.getElementById("mddelay").value );
     mddelay = chorus;
 
-    var osc  = audioContext.createOscillator();
-    var chorusRateGainNode = audioContext.createGain();
+    var osc  = context.createOscillator();
+    var chorusRateGainNode = context.createGain();
     chorusRateGainNode.gain.value = parseFloat( document.getElementById("mddepth").value ); // depth of change to the delay:
     mddepth = chorusRateGainNode;
 
@@ -636,16 +623,16 @@ function createModDelay() {
 }
 
 function createStereoFlange() {
-    var splitter = audioContext.createChannelSplitter(2);
-    var merger = audioContext.createChannelMerger(2);
-    var inputNode = audioContext.createGain();
-    sfllfb = audioContext.createGain();
-    sflrfb = audioContext.createGain();
-    sflspeed = audioContext.createOscillator();
-    sflldepth = audioContext.createGain();
-    sflrdepth = audioContext.createGain();
-    sflldelay = audioContext.createDelay();
-    sflrdelay = audioContext.createDelay();
+    var splitter = context.createChannelSplitter(2);
+    var merger = context.createChannelMerger(2);
+    var inputNode = context.createGain();
+    sfllfb = context.createGain();
+    sflrfb = context.createGain();
+    sflspeed = context.createOscillator();
+    sflldepth = context.createGain();
+    sflrdepth = context.createGain();
+    sflldelay = context.createDelay();
+    sflrdelay = context.createDelay();
 
 
     sfllfb.gain.value = sflrfb.gain.value = parseFloat( document.getElementById("sflfb").value );
@@ -685,14 +672,14 @@ function createStereoFlange() {
 }
 
 function createPitchShifter() {
-    effect = new Jungle( audioContext );
+    effect = new Jungle( context );
     effect.output.connect( wetGain );
     return effect.input;
 }
 
 function createEnvelopeFollower() {
-    var waveshaper = audioContext.createWaveShaper();
-    var lpf1 = audioContext.createBiquadFilter();
+    var waveshaper = context.createWaveShaper();
+    var lpf1 = context.createBiquadFilter();
     lpf1.type = lpf1.LOWPASS;
     lpf1.frequency.value = 10.0;
 
@@ -706,9 +693,9 @@ function createEnvelopeFollower() {
 }
 
 function createAutowah() {
-    var inputNode = audioContext.createGain();
-    var waveshaper = audioContext.createWaveShaper();
-    awFollower = audioContext.createBiquadFilter();
+    var inputNode = context.createGain();
+    var waveshaper = context.createWaveShaper();
+    awFollower = context.createBiquadFilter();
     awFollower.type = awFollower.LOWPASS;
     awFollower.frequency.value = 10.0;
 
@@ -718,11 +705,11 @@ function createAutowah() {
     waveshaper.curve = curve;
     waveshaper.connect(awFollower);
 
-    awDepth = audioContext.createGain();
+    awDepth = context.createGain();
     awDepth.gain.value = 11585;
     awFollower.connect(awDepth);
 
-    awFilter = audioContext.createBiquadFilter();
+    awFilter = context.createBiquadFilter();
     awFilter.type = awFilter.LOWPASS;
     awFilter.Q.value = 15;
     awFilter.frequency.value = 50;
@@ -735,9 +722,9 @@ function createAutowah() {
 }
 
 function createNoiseGate() {
-    var inputNode = audioContext.createGain();
-    var rectifier = audioContext.createWaveShaper();
-    ngFollower = audioContext.createBiquadFilter();
+    var inputNode = context.createGain();
+    var rectifier = context.createWaveShaper();
+    ngFollower = context.createBiquadFilter();
     ngFollower.type = ngFollower.LOWPASS;
     ngFollower.frequency.value = 10.0;
 
@@ -747,12 +734,12 @@ function createNoiseGate() {
     rectifier.curve = curve;
     rectifier.connect(ngFollower);
 
-    ngGate = audioContext.createWaveShaper();
+    ngGate = context.createWaveShaper();
     ngGate.curve = generateNoiseFloorCurve(parseFloat(document.getElementById("ngFloor").value));
 
     ngFollower.connect(ngGate);
 
-    var gateGain = audioContext.createGain();
+    var gateGain = context.createGain();
     gateGain.gain.value = 0.0;
     ngGate.connect( gateGain.gain );
 
@@ -781,9 +768,9 @@ function generateNoiseFloorCurve( floor ) {
 }
 
 function impulseResponse( duration, decay, reverse ) {
-    var sampleRate = audioContext.sampleRate;
+    var sampleRate = context.sampleRate;
     var length = sampleRate * duration;
-    var impulse = audioContext.createBuffer(2, length, sampleRate);
+    var impulse = context.createBuffer(2, length, sampleRate);
     var impulseL = impulse.getChannelData(0);
     var impulseR = impulse.getChannelData(1);
 
