@@ -164,16 +164,8 @@ function init() {
 
     frontCtx = frontCanvas.getContext('2d');
 
-    frontCanvas.addEventListener("mousedown", function(event) {
-        console.log("mouse click on canvas, let's jump to another position in the song")
-        var mousePos = getMousePos(frontCanvas, event);
-        // will compute time from mouse pos and start playing from there...
-        jumpTo(mousePos);
-    })
-
     // Init audio context
     context = initAudioContext();
-    oscillator = context.createOscillator();
 
     // Get the list of the songs available on the server and build a 
     // drop down menu
@@ -452,11 +444,11 @@ function getMousePos(canvas, evt) {
     console.log("in jumpTo x = " + mousePos.x + " y = " + mousePos.y);
     // width - totalTime
     // x - ?
-    stopAllTracks();
+    pauseAllTracks();
     var totalTime = buffers[0].duration;
     var startTime = (mousePos.x * totalTime) / frontCanvas.width;
 	elapsedTimeSinceStart = startTime;
-    playFrom(startTime);
+    playAllTracks(startTime);
  }
 
 function animateTime() {
@@ -488,6 +480,7 @@ function animateTime() {
 
 				elapsedTimeSinceStart += delta;
 				lastTime = currentTime;
+				
 			} else if (loop == true) {
 				// End of song and loop activated, restart playing song from beginning
 				stopAllTracks();
@@ -517,9 +510,9 @@ function loadSong() {
 
 function playAllTracks(startTime) {
 	// Build audio nodes from BufferSource to speakers
-	if (playedOnce == false) {
+	//if (playedOnce == false) {
 		buildGraph(buffers);
-	}
+	//}
 	// Start playing song
     playFrom(startTime);
 }
@@ -533,6 +526,7 @@ function playFrom(startTime) {
 		$("#bplaypause span").removeClass('glyphicon-play');
 	}
 	$("#bplaypause span").addClass('glyphicon-pause');
+	    paused = false;
 
   samples.forEach(function(s) {
 		console.log('starting sample');
@@ -561,6 +555,7 @@ function stopAllTracks() {
 		if (s.playbackState == undefined || s.playbackState != s.FINISHED_STATE) {
 			console.log('stopping sample');
 			s.stop(0);
+			s.disconnect(0);
 		}
     });
     buttonStop.disabled = true;
@@ -599,11 +594,7 @@ console.log("pauseAllTracks");
             s.stop(0);
         });
         paused = true;
-   } else {
-        paused = false;
-		// we were in pause, let's start again from where we paused
-        playFrom(elapsedTimeSinceStart);
-    }
+   }
 }
 
 function setMasterVolume() {
