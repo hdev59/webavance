@@ -34,17 +34,19 @@ BufferLoader.prototype.loadBuffer = function(url, index) {
 					height = tracksCanvas[index].height,
 					ctx = tracksCtx[index],
 					step = Math.ceil(data.length / width),
-					amp = 300;
+					amp = 100;
 					ctx.beginPath();
 					ctx.moveTo(0, height/2 + data[0]);
+					var oldLineWidth = ctx.lineWidth;
 					for (var i = 0; i < width; i++) {
 						ctx.lineTo(i, height/2 + data[step*i] * amp);
 					}
 					ctx.closePath();
+					ctx.lineWidth = 3;
 					ctx.stroke();
 					ctx.moveTo(0, 0);
 					// End draw sample image
-					
+					ctx.lineWidth = oldLineWidth;
                     loader.bufferList[index] = buffer;
 					console.log("Buffer = " + buffer);
                     console.log("In bufferLoader.onload bufferList size is " + loader.bufferList.length + " index =" + index);

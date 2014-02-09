@@ -59,6 +59,7 @@ var frequencySpectrumCtx;
 var FREQUENCY_SPECTRUM_WIDTH = 300;
 var FREQUENCY_SPECTRUM_HEIGHT = 100;
 
+
 // ngProgress progress bar
 var progressApp = angular.module('progressApp', ['ngProgress']);
 
@@ -305,25 +306,21 @@ function loadSongList() {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', "track", true);
 
-    // Menu for song selection
-    var s = $("<select id ='song' class='select-block'/>");
-    s.appendTo("#songs");
-    s.change(function(e) {
-        console.log("You chose : " + $(this).val());
-        loadTrackList($(this).val());
-    });
-
     xhr.onload = function(e) {
         var songList = JSON.parse(this.response);
-
         songList.forEach(function(songName) {
-            console.log(songName);
-            $("<option />", {value: songName, text: songName}).appendTo(s);
+            appendTrackToList(songName);
         });
     };
     xhr.send();
 }
 
+function appendTrackToList(songName) {
+	var trackList = $("#track-list");
+	var li = $('<li>');
+	$("<a>", { href: '#', value: songName, text: songName }).addClass('switch-track').appendTo(li);
+	li.appendTo(trackList);
+}
 
 // ######## TRACKS
 function endsWith(str, suffix) {
@@ -352,19 +349,20 @@ resetAllBeforeLoadingANewSong();
             console.log("on a une image");
             // Render HTMl
             var span = document.createElement('span');
-            var imageURL = "track/" + songName + "/visualisation/" + instrument.visualisation;
 
             span.innerHTML = 
-                    "<div class='trackDiv vertical-align'><div><button id='mute" + trackNumber + "' class='btn btn-block btn-lg btn-primary' onclick='muteUnmuteTrack(" + trackNumber + ");'><span class='glyphicon glyphicon-volume-up'></span> " + instrument.name + "</button></div><div class='ui-slider' class='trackVolumeSlider' id='trackVolumeSlider"+ trackNumber +"' style='width:200px'></div>"
-					
-                    /*
-                    +
-                    "<img class='sample' src='" + imageURL + "'/><br/>";
-                    */
-					
+                 "<div class='trackDiv vertical-align'><div><button id='mute" 
+				 + trackNumber + 
+				 "' class='btn btn-block btn-lg btn-primary' onclick='muteUnmuteTrack(" 
+				 + trackNumber + 
+				 ");'><span class='glyphicon glyphicon-volume-up'></span> " 
+				 + instrument.name + 
+				 "</button></div><div class='ui-slider' class='trackVolumeSlider' id='trackVolumeSlider"
+				 + trackNumber +
+				 "' style='width:200px'></div>";
+
 			createTrackCanvas(trackNumber);
 			
-            drawSampleImage(imageURL, trackNumber, instrument.name);
             divTrack.appendChild(span);
 			var trackVolumeSlider = $("#trackVolumeSlider"+ trackNumber);
 			trackVolumeSlider.attr('data-track-number', trackNumber);
@@ -405,7 +403,7 @@ function createTrackCanvas(trackNumber) {
 	trackCanvas.attr('width', canvas.width);
 	trackCanvas.attr('height', SAMPLE_HEIGHT);
 	trackCanvas.css({position : 'absolute', top : topPos, left : frontCanvas.css('left')});
-	
+	trackCanvas.addClass('trackCanvas');
 	// Set trackCanvas in global vars
 	tracksCanvas[trackNumber] = trackCanvas[0];
 	// Set and configure canvas context
@@ -507,27 +505,6 @@ function resetTime() {
 	frontCtx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-
-
-function drawSampleImage(imageURL, trackNumber, trackName) {
-    var image = new Image();
-
-    image.onload = function() {
-        // SAMPLE_HEIGHT pixels height
-        var x = 0;
-        var y = trackNumber * SAMPLE_HEIGHT;
-        ctx.drawImage(image, x, y, canvas.width, SAMPLE_HEIGHT);
-
-        ctx.strokeStyle = "white";
-        ctx.strokeRect(x, y, canvas.width, SAMPLE_HEIGHT);
-
-        ctx.font = '14pt Arial';
-        ctx.fillStyle = 'white';
-        ctx.fillText(trackName, x + 10, y + 20);
-    }
-    image.src = imageURL;
-}
-
 function resizeSampleCanvas(numTracks) {
     canvas.height = (parseInt(SAMPLE_HEIGHT) + parseInt(SAMPLE_MARGIN)) * numTracks;
     frontCanvas.height = canvas.height;
@@ -558,9 +535,12 @@ function playFrom(startTime) {
 	$("#bplaypause span").addClass('glyphicon-pause');
 
   samples.forEach(function(s) {
+		console.log('starting sample');
+		console.log(s);
 // First parameter is the delay before playing the sample
 // second one is the offset in the song, in seconds, can be 2.3456
 // very high precision !
+		
         s.start(0, startTime);
     })
     buttonStop.disabled = false;
@@ -579,6 +559,7 @@ function stopAllTracks() {
 		// destroy the nodes
 		console.log("playbackState : " + s.playbackState);
 		if (s.playbackState == undefined || s.playbackState != s.FINISHED_STATE) {
+			console.log('stopping sample');
 			s.stop(0);
 		}
     });
@@ -670,9 +651,13 @@ function muteUnmuteTrack(trackNumber) {
 
 function setLoop() {
 	if (loop == true) {
+		if ($('#bloop span').hasClass('red')) {
+			$('#bloop span').removeClass('red');
+		}
 		console.log("deactivate loop");
 		loop = false;
 	} else {
+		$('#bloop span').addClass('red');
 		console.log("activate loop");
 		loop = true;
 	}
@@ -722,6 +707,14 @@ $(document).ready(function() {
 		}
       }).addSliderSegments(masterVolumeSlider.slider("option").max);
     }
+	
+	$("#open-upload").fancybox();
+	
+	$("#track-list").on("click", "li a", function(event){
+		$("#track-list-value").text($(this).attr('value'));
+		loadTrackList($(this).attr('value'));
+	});
+	
 });
 
 // http://css.dzone.com/articles/exploring-html5-web-audio
@@ -758,4 +751,127 @@ $(document).ready(function() {
 			frequencySpectrumCtx.fillRect(i*2,FREQUENCY_SPECTRUM_HEIGHT * 2-value,1,FREQUENCY_SPECTRUM_HEIGHT);
 		}
 	}
+	
+	
+	
+// Drag n drop
+FileUploadCtrl.$inject = ['$scope']
+function FileUploadCtrl(scope) {
+    //============== DRAG & DROP =============
+    // source for drag&drop: http://www.webappers.com/2011/09/28/drag-drop-file-upload-with-html5-javascript/
+    var dropbox = document.getElementById("dropbox")
+    scope.dropText = 'Déposez vos fichiers ici'
+
+    // init event handlers
+    function dragEnterLeave(evt) {
+        evt.stopPropagation()
+        evt.preventDefault()
+        scope.$apply(function(){
+            scope.dropText = 'Drop files here...'
+            scope.dropClass = ''
+        })
+    }
+    dropbox.addEventListener("dragenter", dragEnterLeave, false)
+    dropbox.addEventListener("dragleave", dragEnterLeave, false)
+    dropbox.addEventListener("dragover", function(evt) {
+        evt.stopPropagation()
+        evt.preventDefault()
+        var clazz = 'not-available'
+        var ok = evt.dataTransfer && evt.dataTransfer.types && evt.dataTransfer.types.indexOf('Files') >= 0
+        scope.$apply(function(){
+            scope.dropText = ok ? 'Déposez vos fichiers ici' : 'Seuls les fichiers sont autorisés'
+            scope.dropClass = ok ? 'over' : 'not-available'
+        })
+    }, false)
+    dropbox.addEventListener("drop", function(evt) {
+        console.log('drop evt:', JSON.parse(JSON.stringify(evt.dataTransfer)))
+        evt.stopPropagation()
+        evt.preventDefault()
+        scope.$apply(function(){
+            scope.dropText = 'Déposez vos fichiers ici'
+            scope.dropClass = ''
+        })
+        var files = evt.dataTransfer.files
+        if (files.length > 0) {
+            scope.$apply(function(){
+				console.log('scope files');
+				console.log(scope.files);
+				if (scope.files == undefined) {
+					scope.files = [];
+				}
+                for (var i = 0; i < files.length; i++) {
+                    scope.files.push(files[i])
+                }
+            })
+        }
+    }, false)
+    //============== DRAG & DROP =============
+
+    scope.setFiles = function(element) {
+    scope.$apply(function(scope) {
+      console.log('files:', element.files);
+      // Turn the FileList object into an Array
+        scope.files = []
+        for (var i = 0; i < element.files.length; i++) {
+          scope.files.push(element.files[i])
+        }
+      scope.progressVisible = false
+      });
+    };
+
+    scope.uploadFile = function() {
+        var fd = new FormData()
+		fd.append('title', $('#uploadtitle').val());
+        for (var i in scope.files) {
+            fd.append('uploadedfile', scope.files[i])
+        }
+        var xhr = new XMLHttpRequest()
+        xhr.upload.addEventListener("progress", uploadProgress, false)
+        xhr.addEventListener("load", uploadComplete, false)
+        xhr.addEventListener("error", uploadFailed, false)
+        xhr.addEventListener("abort", uploadCanceled, false)
+        xhr.open("POST", "/upload")
+        scope.progressVisible = true
+        xhr.send(fd)
+    }
+
+    function uploadProgress(evt) {
+        scope.$apply(function(){
+            if (evt.lengthComputable) {
+                scope.progress = Math.round(evt.loaded * 100 / evt.total)
+            } else {
+                scope.progress = 'unable to compute'
+            }
+        })
+    }
+
+    function uploadComplete(evt) {
+        /* This event is raised when the server send back a response */
+        alert("Titre envoyé avec succès.");
+		
+		// Add song to select
+		var uploadedTitle = $("#uploadtitle").val();
+		$("<option value='"+uploadedTitle+"'>"+uploadedTitle+"</option>").appendTo($("#song"));
+		
+		// Clear upload form
+		$("#uploadtitle").val("");
+		scope.$apply(function(){
+			scope.files = [];
+            scope.progressVisible = false
+        })
+    }
+
+    function uploadFailed(evt) {
+        alert("Une erreur est survenue durant l'envoi.")
+    }
+
+    function uploadCanceled(evt) {
+        scope.$apply(function(){
+            scope.progressVisible = false
+        })
+        alert("L'envoi à été annulé ou le navigateur a fermé la connexion, veuillez réessayer d'envoyer vos fichiers.")
+    }
+}
+
+
 

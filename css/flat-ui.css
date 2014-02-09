@@ -2692,7 +2692,6 @@ fieldset[disabled] .navbar-inverse .navbar-btn.active {
   height: 12px;
   -webkit-box-shadow: none;
   box-shadow: none;
-  margin-bottom: 20px;
   position: relative;
 }
 .ui-slider-handle {
