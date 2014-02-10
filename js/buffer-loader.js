@@ -42,6 +42,8 @@ BufferLoader.prototype.loadBuffer = function(url, index) {
 						ctx.lineTo(i, height/2 + data[step*i] * amp);
 					}
 					ctx.closePath();
+					ctx.strokeStyle = "#48c9b0";
+
 					ctx.lineWidth = 3;
 					ctx.stroke();
 					ctx.moveTo(0, 0);
