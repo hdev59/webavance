@@ -358,6 +358,7 @@ function finishedLoading(bufferList) {
     buffers = bufferList;
     buttonPlay.disabled = false;
 	buttonLoop.disabled = false;
+	$("#brecord")[0].disabled = false;
 }
 
 function buildGraph(bufferList) {

@@ -92,7 +92,7 @@
 				</div>
 				&nbsp;&nbsp;
 				<span>
-					 <button class="btn btn-block btn-lg btn-default" id="brecord"><span class="glyphicon glyphicon-record"></span></button>
+					 <button class="btn btn-block btn-lg btn-default" id="brecord" disabled><span class="glyphicon glyphicon-record"></span></button>
 				</span>
 				&nbsp;&nbsp;
 				<span>
@@ -171,7 +171,7 @@
 		<div style="clear:both"></div>
 
 		<!-- Effect mix -->
-		<div id="effects" style="background:red;">
+		<div id="effects" style="background:red;display:none">
 			<div id="effectMix">Effect: 
 				<select id="effect" onchange="changeEffect(this.selectedIndex);">
 					<option>Delay </option>
