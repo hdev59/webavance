@@ -609,7 +609,7 @@ function animateTime() {
         var totalTime;
 		
 		trackTimeCtx[0].clearRect(0, 0, canvas.width, canvas.height);
-        trackTimeCtx[0].fillStyle = 'white';
+        trackTimeCtx[0].fillStyle = 'black';
         trackTimeCtx[0].font = '14pt Arial';
         trackTimeCtx[0].fillText(elapsedTimeSinceStart.toPrecision(4), 100, 20);
 
@@ -625,7 +625,7 @@ function animateTime() {
 					if (i > 0) {
 						trackTimeCtx[i].clearRect(0, 0, canvas.width, canvas.height);
 					}
-					trackTimeCtx[i].strokeStyle = "white";
+					trackTimeCtx[i].strokeStyle = "black";
 					trackTimeCtx[i].lineWidth = 3;
 					trackTimeCtx[i].beginPath();
 					trackTimeCtx[i].moveTo(x, 0);
