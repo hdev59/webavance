@@ -152,6 +152,7 @@ function crossfade(value) {
 var lastEffect = -1;
 
 function changeEffect(effect) {
+console.log('change effect to' + effect);
     lfo = null;
     dtime = null;
     dregen = null;
@@ -213,6 +214,7 @@ function changeEffect(effect) {
             currentEffectNodes = createReverb();
             break;
         case 2: // Distortion
+			console.log('effet disto');
             currentEffectNode = createDistortion();
             break;
         case 3: // Telephone
@@ -287,10 +289,11 @@ function changeEffect(effect) {
 	if (currentEffectNode) {
 		console.log("Connecting an effect to masterVolumeNode");
 		masterVolumeNode.connect(currentEffectNode);
+		
 	}
 	for (var i=0; i < currentEffectNodes.length; i++) {
 		console.log("Connecting an effect to trackVolumeNode " + i);
-		trackVolumeNodes[i].connect(currentEffectNodes[i]);
+		masterVolumeNode.connect(currentEffectNodes[i]);
 	}
 	
 	

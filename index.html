@@ -21,154 +21,26 @@
 		<script src="js/effect.js"></script>
 		<script src="js/effects.js"></script>
 		
+		<!-- Recorder -->
+		<script src="js/recorder.js"></script>
+		<script src="js/recorder.main.js"></script>
+		
 		<!-- Sound loader / player -->
 		<script src="js/buffer-loader.js"></script>
 		<script src="js/sound.js"></script>
+		
+	
 
+		
 		<!-- CSS -->
 		<link rel="stylesheet" type="text/css" href="bootstrap/css/bootstrap.css" media="screen" />
 		<link rel="stylesheet" type="text/css" href="css/flat-ui.css" >	
 		<link rel="stylesheet" type="text/css" href="css/ngProgress.css" >
 		<link rel="stylesheet" type="text/css" href="css/jquery.fancybox.css?v=2.1.5" media="screen" />
-
-        <style>
-			
-			#tracksCanvas {
-				width: 800px;
-				height: 400px;
-				margin: 0 auto;
-				position: relative;
-				float:right;
-			}
-			
-			#tracks {
-				margin: 0 0;
-				position: relative;
-				float:left;
-				width:340px;
-			}
-			
-			#myCanvas, #frontCanvas {
-				top: 0;
-				left: 0;
-				position: absolute;
-								background:black;
-
-			}
-			
-			.trackCanvas {
-			}
-			
-			#frequency-spectrum-canvas {
-				position: relative;
-				float:right;
-				background:blue;
-			}
-			
-			.trackDiv {
-				height:100px;
-				border: 1px black solid;
-			}
-			
-			.green {
-				color:green;
-			}
-			
-			.red {
-				color:red;
-			}
-			
-			.vertical-align {
-				/* Internet Explorer 10 */
-				display:-ms-flexbox;
-				-ms-flex-pack:center;
-				-ms-flex-align:center;
-
-				/* Firefox */
-				display:-moz-box;
-				-moz-box-pack:center;
-				-moz-box-align:center;
-
-				/* Safari, Opera, and Chrome */
-				display:-webkit-box;
-				-webkit-box-pack:center;
-				-webkit-box-align:center;
-
-				/* W3C */
-				display:box;
-				box-pack:center;
-				box-align:center;
-			}
-            .sample {
-                border: solid white 1px;
-                background:black;
-            }
-		
-			#track-controls, #track-controls-left-panel {
-				background:yellow;
-				height:100px;
-			}
-			
-			#track-controls-left-panel {
-				float:left;
-			}
-			
-			#dragndrop {
-				background: yellow;
-				width:300px;
-				height: 300px;
-			}
-			
-			
-			
-			
-			
-			table { border-collapse: collapse; }
-.percent {
-    position: absolute; width: 300px; height: 14px; z-index: 1; text-align: center; font-size: 0.8em; color: white;
-}
-.progress-bar {
-    width: 300px; height: 14px;
-    border-radius: 10px;
-    border: 1px solid #CCC;
-    background-image: -webkit-gradient(linear, left top, left bottom, from(#6666cc), to(#4b4b95));
-    border-image: initial;
-}
-.uploaded {
-    padding: 0;
-    height: 14px;
-    border-radius: 10px;
-    background-image: -webkit-gradient(linear, left top, left bottom, from(#66cc00), to(#4b9500));
-    border-image: initial;
-}
-.dropbox {
-    width: 15em;
-    height: 3em;
-    border: 2px solid #DDD;
-    border-radius: 8px;
-    background-color: #FEFFEC;
-    text-align: center;
-    color: #BBB;
-    font-size: 2em;
-    font-family: Arial, sans-serif;
-}
-.dropbox span {
-    margin-top: 0.9em;
-    display: block;
-}
-.dropbox.not-available {
-    background-color: #F88;
-}
-.dropbox.over {
-    background-color: #bfb;
-}
-
-.track-slider {
-}
-
-        </style>
+		<link rel="stylesheet" type="text/css" href="css/application.css" media="screen" />
     </head>
-    <body onload="init();" ng-controller="FileUploadCtrl">
+	
+    <body onload="init();" ng-controller="ProgressMainCtrl">
 	<div class="container">
 		<br/>
 		<div id="track-controls">
@@ -176,7 +48,7 @@
 			<div id="track-controls-left-panel" class="vertical-align">
 				&nbsp;&nbsp;
 				<span>
-					<button class="btn btn-block btn-lg btn-primary" id="bplaypause" disabled><span class="glyphicon glyphicon-play"></span></button>
+					<button class="btn btn-block btn-lg btn-primary" id="bplaypause" disabled alt="play" label="play"><span class="glyphicon glyphicon-play"></span></button>
 				</span>
 				&nbsp;&nbsp;
 				<span>
@@ -184,29 +56,91 @@
 				</span>
 				&nbsp;&nbsp;
 				<span>
-					<button class="btn btn-block btn-lg btn-primary" id="bloop" onclick="setLoop();" disabled><span class="glyphicon glyphicon-repeat"></span></button>
+					<button class="btn btn-block btn-lg btn-inverse" id="bloop" onclick="setLoop();" disabled><span class="glyphicon glyphicon-repeat"></span></button>
 				</span>
 				&nbsp;&nbsp;
 				<span>
-					 <button class="btn btn-block btn-lg btn-primary" id="bmonostereo" disabled>mono</button>
+					 <button class="btn btn-block btn-lg btn-primary" id="bmonostereo" disabled style="width:80px">mono</button>
 				</span>
 				&nbsp;&nbsp;
 				<span>
-					<button class="btn btn-block btn-lg btn-primary" id="bupload" alt="upload"><span class="glyphicon glyphicon-upload"></span></button>
+					<a id="open-upload" href="#file-upload"><button class="btn btn-block btn-lg btn-info" id="bupload" alt="upload"><span class="glyphicon glyphicon-upload"></span></button></a>
+				</span>
+				<div id="file-upload" style="display:none;text-align:center">
+					<form>
+						<label for="uploadtitle">Titre :</label>
+						<input type="text" class="form-control" id="uploadtitle" name="uploadtitle" >
+						<br/>
+						<div id="dropbox" class="dropbox" ng-class="dropClass"><span>{{dropText}}</span></div>
+						<div ng-show="files.length">
+							<div ng-repeat="file in files.slice(0)">
+								<span>{{file.webkitRelativePath || file.name}}</span>
+								(<span ng-switch="file.size > 1024*1024">
+									<span ng-switch-when="true">{{file.size / 1024 / 1024 | number:2}} MB</span>
+									<span ng-switch-default>{{file.size / 1024 | number:2}} kB</span>
+								</span>)
+							</div>
+							<input type="button" ng-click="uploadFile()" value="Upload" />
+							<div ng-show="progressVisible">
+								<div class="percent">{{progress}}%</div>
+								<div class="progress-bar">
+									<div class="uploaded" ng-style="{'width': progress+'%'}"></div>
+								</div>
+							</div>
+						</div>
+					</form>
+				</div>
+				&nbsp;&nbsp;
+				<span>
+					 <button class="btn btn-block btn-lg btn-default" id="brecord"><span class="glyphicon glyphicon-record"></span></button>
 				</span>
 				&nbsp;&nbsp;
-				<div id="masterVolumeSlider" class="ui-slider track-slider" style="width:200px"></div>
-				&nbsp;&nbsp;
+				<span>
+					 <button class="btn btn-block btn-lg btn-default" id="bdownload" disabled><span class="glyphicon glyphicon-save" ></span></button>
+				</span>
+				&nbsp;&nbsp;&nbsp;
+				<span class='glyphicon glyphicon-volume-up'></span>&nbsp;&nbsp;
+				<div id="masterVolumeSlider" class="ui-slider track-slider" style="width:120px"></div>
+				&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 			
 				<!-- Single button -->
-				<div class="btn-group">
-				  <button id="track-list-button" type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+				<div id="dropdowns" style="width:200px;">
+				<div class="btn-group" style="margin-bottom:5px">
+				  <button id="track-list-button" type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"  style="width:150px">
 					<span id="track-list-value">Track</span><span class="caret"></span>
 				  </button>
 				  <ul id="track-list" class="dropdown-menu" role="menu">
 					
 				  </ul>
 				</div>
+				
+				<div class="btn-group">
+				  <button id="track-effect-button" type="button" class="btn btn-default dropdown-toggle" style="width:150px" data-toggle="dropdown">
+					<span id="track-effect-value">Effect</span><span class="caret"></span>
+				  </button>
+				  <ul id="track-effect" class="dropdown-menu" role="menu">
+					<li>
+						<a href="#" data-effect-id="1">Reverb</a>
+					</li>
+					<li>
+						<a href="#" data-effect-id="2">Distortion</a>
+					</li>
+					<li>
+						<a href="#" data-effect-id="7">Ring mod</a>
+					</li>
+					<li>
+						<a href="#" data-effect-id="11">Mod delay</a>
+					</li>
+					<li>
+						<a href="#" data-effect-id="12">Ping-pong</a>
+					</li>
+					<li>
+						<a href="#" data-effect-id="19">Vibrato</a>
+					</li>
+				  </ul>
+				</div>
+
+			</div>
 			</div>
 			
 			<canvas id="frequency-spectrum-canvas" width="300" height="100"></canvas>
@@ -214,6 +148,20 @@
 
 		
 		<div style="clear:both"></div>
+		
+		<table class="table" id="track-table" style="display:none">
+			<thead>
+				<tr>
+					<th>Mute</th>
+					<th>Name</th>
+					<th>Volume</th>
+					<th></th>
+				<tr>	
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
+			
 		<div id="tracksDisplay">
 			<div id="tracks"></div>
 			<div id="tracksCanvas">
@@ -352,36 +300,11 @@
 				</div>
 			</div>
 		</div>
-	
-		<div id="file-upload" style="text-align:center">
-			<form>
-				<label for="uploadtitle">Titre :</label>
-				<input type="text" class="form-control" id="uploadtitle" name="uploadtitle" >
-				<br/>
-				<div id="dropbox" class="dropbox" ng-class="dropClass"><span>{{dropText}}</span></div>
-				<div ng-show="files.length">
-					<div ng-repeat="file in files.slice(0)">
-						<span>{{file.webkitRelativePath || file.name}}</span>
-						(<span ng-switch="file.size > 1024*1024">
-							<span ng-switch-when="true">{{file.size / 1024 / 1024 | number:2}} MB</span>
-							<span ng-switch-default>{{file.size / 1024 | number:2}} kB</span>
-						</span>)
-					</div>
-					<input type="button" ng-click="uploadFile()" value="Upload" />
-					<div ng-show="progressVisible">
-						<div class="percent">{{progress}}%</div>
-						<div class="progress-bar">
-							<div class="uploaded" ng-style="{'width': progress+'%'}"></div>
-						</div>
-					</div>
-				</div>
-			</form>
-		</div>
-	
 		
 		<!-- update progressBar while loading tracklist, used by JS in buffer-loader.js -->
 		<input id="ngProgressCounter" type="number" ng-model="counter" style="display:none">
 		<button id="setProgress" href="#demo" ng-click="setWidth(counter, $event)" style="display:none" />
+		<button id="setComplete" href="#demo" ng-click="completeProgress($event)" style="display:none" />
 	</div>
 	
 	

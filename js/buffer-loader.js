@@ -34,7 +34,7 @@ BufferLoader.prototype.loadBuffer = function(url, index) {
 					height = tracksCanvas[index].height,
 					ctx = tracksCtx[index],
 					step = Math.ceil(data.length / width),
-					amp = 100;
+					amp = 200;
 					ctx.beginPath();
 					ctx.moveTo(0, height/2 + data[0]);
 					var oldLineWidth = ctx.lineWidth;
@@ -53,9 +53,12 @@ BufferLoader.prototype.loadBuffer = function(url, index) {
 					
 					// ngProgress : modify counter and update progress bar
 					$("#ngProgressCounter").val((loader.loadCount + 1) * (100 / loader.urlList.length));
+					
 					$("#ngProgressCounter").trigger('input');
 					$("#setProgress").click();
-                    
+                    if ((loader.loadCount + 1) * (100 / loader.urlList.length) == 100) {
+						$("#setComplete").click();
+					}
 					if (++loader.loadCount == loader.urlList.length)
                         loader.onload(loader.bufferList);
                 },

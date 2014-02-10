@@ -1,5 +1,5 @@
 var context;
-
+var recording = false;
 var source = null;
 // Les echantillons prêts à être joués, de toutes les pistes
 var tracks = [];
@@ -37,9 +37,14 @@ var canvas, ctx;
 var frontCanvas, frontCtx;
 
 var tracksCanvas = [];
+var tracksTimeCanvas = [];
+
+
 var tracksCtx = [];
+var trackTimeCtx = [];
 
 // Sample size in pixels
+var SAMPLE_WIDTH = 600;
 var SAMPLE_HEIGHT = 100;
 var SAMPLE_MARGIN = 0;
 
@@ -62,6 +67,7 @@ var FREQUENCY_SPECTRUM_HEIGHT = 100;
 
 // ngProgress progress bar
 var progressApp = angular.module('progressApp', ['ngProgress']);
+
 
 var ProgressMainCtrl = function($scope, $timeout, ngProgress) {
         $scope.name = 'Lars';
@@ -115,7 +121,122 @@ var ProgressMainCtrl = function($scope, $timeout, ngProgress) {
             ngProgress.reset();
             $event.preventDefault();
         }
+		
+	//============== DRAG & DROP =============
+    // source for drag&drop: http://www.webappers.com/2011/09/28/drag-drop-file-upload-with-html5-javascript/
+    var dropbox = document.getElementById("dropbox")
+    $scope.dropText = 'Déposez vos fichiers ici'
+
+    // init event handlers
+    function dragEnterLeave(evt) {
+        evt.stopPropagation()
+        evt.preventDefault()
+        $scope.$apply(function(){
+            $scope.dropText = 'Déposez vos fichiers ici'
+            $scope.dropClass = ''
+        })
     }
+    dropbox.addEventListener("dragenter", dragEnterLeave, false)
+    dropbox.addEventListener("dragleave", dragEnterLeave, false)
+    dropbox.addEventListener("dragover", function(evt) {
+        evt.stopPropagation()
+        evt.preventDefault()
+        var clazz = 'not-available'
+        var ok = evt.dataTransfer && evt.dataTransfer.types && evt.dataTransfer.types.indexOf('Files') >= 0
+        $scope.$apply(function(){
+            $scope.dropText = ok ? 'Déposez vos fichiers ici' : 'Seuls les fichiers sont autorisés'
+            $scope.dropClass = ok ? 'over' : 'not-available'
+        })
+    }, false)
+    dropbox.addEventListener("drop", function(evt) {
+        console.log('drop evt:', JSON.parse(JSON.stringify(evt.dataTransfer)))
+        evt.stopPropagation()
+        evt.preventDefault()
+        $scope.$apply(function(){
+            $scope.dropText = 'Déposez vos fichiers ici'
+            $scope.dropClass = ''
+        })
+        var files = evt.dataTransfer.files
+        if (files.length > 0) {
+            $scope.$apply(function(){
+				console.log('$scope files');
+				console.log($scope.files);
+				if ($scope.files == undefined) {
+					$scope.files = [];
+				}
+                for (var i = 0; i < files.length; i++) {
+                    $scope.files.push(files[i])
+                }
+            })
+        }
+    }, false)
+    //============== DRAG & DROP =============
+
+    $scope.setFiles = function(element) {
+    $scope.$apply(function($scope) {
+      console.log('files:', element.files);
+      // Turn the FileList object into an Array
+        $scope.files = []
+        for (var i = 0; i < element.files.length; i++) {
+          $scope.files.push(element.files[i])
+        }
+      $scope.progressVisible = false
+      });
+    };
+
+    $scope.uploadFile = function() {
+        var fd = new FormData()
+		fd.append('title', $('#uploadtitle').val());
+        for (var i in $scope.files) {
+            fd.append('uploadedfile', $scope.files[i])
+        }
+        var xhr = new XMLHttpRequest()
+        xhr.upload.addEventListener("progress", uploadProgress, false)
+        xhr.addEventListener("load", uploadComplete, false)
+        xhr.addEventListener("error", uploadFailed, false)
+        xhr.addEventListener("abort", uploadCanceled, false)
+        xhr.open("POST", "/upload")
+        $scope.progressVisible = true
+        xhr.send(fd)
+    }
+
+    function uploadProgress(evt) {
+        $scope.$apply(function(){
+            if (evt.lengthComputable) {
+                $scope.progress = Math.round(evt.loaded * 100 / evt.total)
+            } else {
+                $scope.progress = 'unable to compute'
+            }
+        })
+    }
+
+    function uploadComplete(evt) {
+        /* This event is raised when the server send back a response */
+        alert("Titre envoyé avec succès.");
+		
+		// Add song to select
+		var uploadedTitle = $("#uploadtitle").val();
+		appendTrackToList(uploadedTitle);
+		
+		// Clear upload form
+		$("#uploadtitle").val("");
+		$scope.$apply(function(){
+			$scope.files = [];
+            $scope.progressVisible = false
+        })
+    }
+
+    function uploadFailed(evt) {
+        alert("Une erreur est survenue durant l'envoi.")
+    }
+
+    function uploadCanceled(evt) {
+        $scope.$apply(function(){
+            $scope.progressVisible = false
+        })
+        alert("L'envoi à été annulé ou le navigateur a fermé la connexion, veuillez réessayer d'envoyer vos fichiers.")
+    }
+}
 
 progressApp.config(function(ngProgressProvider){
         // Default color is firebrick
@@ -171,7 +292,6 @@ function init() {
     // drop down menu
     loadSongList();
 
-    animateTime();
 }
 
 
@@ -203,7 +323,8 @@ function resetAllBeforeLoadingANewSong() {
     stopAllTracks();
     buttonPlay.disabled = true;
 	buttonLoop.disabled = true;
-    divTrack.innerHTML="";
+    $("#track-table tbody")[0].innerHTML = "";
+	$("#track-table").css({'display' : 'block'});
     /*
     samples.forEach(function(s) {
         s.stop(0);
@@ -273,6 +394,7 @@ function buildGraph(bufferList) {
     analyser.fftSize = 512;
  
 	masterVolumeNode.connect(analyser);
+	audioRecorder = new Recorder( masterVolumeNode );
 	console.log("MasterVolumeNode " + masterVolumeNode);
 	analyser.connect(javascriptNode);
 	initializeFrequencySpectrum();
@@ -282,7 +404,7 @@ function buildGraph(bufferList) {
         sources[i] = context.createBufferSource();
         sources[i].buffer = sample;
 		console.log("Sample : " + sample);
-        // connect each sound sample to a vomume node
+        // connect each sound sample to a volume node
         trackVolumeNodes[i] = context.createGain();
         // Connect the sound sample to its volume node
         sources[i].connect(trackVolumeNodes[i]);
@@ -335,27 +457,34 @@ resetAllBeforeLoadingANewSong();
         // resize canvas depending on number of samples
         resizeSampleCanvas(track.instruments.length);
         var i = 0;
-
+		var tableBody = document.querySelector("#track-table tbody");
         track.instruments.forEach(function(instrument, trackNumber) {
-            // Image
-            console.log("on a une image");
+
             // Render HTMl
-            var span = document.createElement('span');
-
-            span.innerHTML = 
-                 "<div class='trackDiv vertical-align'><div><button id='mute" 
-				 + trackNumber + 
-				 "' class='btn btn-block btn-lg btn-primary' onclick='muteUnmuteTrack(" 
-				 + trackNumber + 
-				 ");'><span class='glyphicon glyphicon-volume-up'></span> " 
-				 + instrument.name + 
-				 "</button></div><div class='ui-slider' class='trackVolumeSlider' id='trackVolumeSlider"
-				 + trackNumber +
-				 "' style='width:200px'></div>";
-
-			createTrackCanvas(trackNumber);
+            var column = document.createElement('tr');
 			
-            divTrack.appendChild(span);
+			var tdMute = document.createElement('td');
+			tdMute.className = 'track-td-mute';
+			var tdName = document.createElement('td');
+			tdName.className = 'track-td-name';
+			var tdCanvas = document.createElement('td');
+			tdCanvas.className = 'track-td-canvas';
+			var tdVolume = document.createElement('td');
+			tdVolume.className = 'track-td-volume';
+			
+			tdVolume.innerHTML = "<div class='ui-slider' class='trackVolumeSlider' id='trackVolumeSlider"  + trackNumber + "'></div>";
+			tdName.innerHTML = instrument.name;
+			tdMute.innerHTML = "<button id='mute" + trackNumber + "' class='btn btn-block btn-lg btn-primary' onclick='muteUnmuteTrack(" 
+				+ trackNumber +  ");'><span class='glyphicon glyphicon-volume-up'></span></button>"; 
+			
+			createTrackCanvas(trackNumber, tdCanvas);
+			
+			column.appendChild(tdMute);
+			column.appendChild(tdName);
+			column.appendChild(tdVolume);
+			column.appendChild(tdCanvas);
+			
+            tableBody.appendChild(column);
 			var trackVolumeSlider = $("#trackVolumeSlider"+ trackNumber);
 			trackVolumeSlider.attr('data-track-number', trackNumber);
 			trackVolumeSlider.slider({
@@ -385,26 +514,41 @@ resetAllBeforeLoadingANewSong();
     xhr.send();
 }
 
-function createTrackCanvas(trackNumber) {
+function createTrackCanvas(trackNumber, tdCanvas) {
 	var trackCanvas = $('<canvas>');
-	var frontCanvas = $('#frontCanvas');
-	var topPos = parseInt(frontCanvas.css('top')) + (trackNumber * (SAMPLE_HEIGHT + SAMPLE_MARGIN));
-
+	var trackTimeCanvas = $('<canvas>');
+	var trackCanvasContainer = $('<div>');
+	trackCanvasContainer.addClass('trackCanvasContainer');
 	// Configure trackCanvas
 	trackCanvas.attr('id', 'trackCanvas' + trackNumber);
-	trackCanvas.attr('width', canvas.width);
+	trackCanvas.attr('width', SAMPLE_WIDTH);
 	trackCanvas.attr('height', SAMPLE_HEIGHT);
-	trackCanvas.css({position : 'absolute', top : topPos, left : frontCanvas.css('left')});
 	trackCanvas.addClass('trackCanvas');
+
+	//COnfigure trackTimeCanvas
+	trackTimeCanvas.attr('id', 'trackTimeCanvas' + trackNumber);
+	trackTimeCanvas.attr('width', SAMPLE_WIDTH);
+	trackTimeCanvas.attr('height', SAMPLE_HEIGHT);
+	trackTimeCanvas.addClass('trackTimeCanvas');
+
 	// Set trackCanvas in global vars
 	tracksCanvas[trackNumber] = trackCanvas[0];
+	tracksTimeCanvas[trackNumber] = trackTimeCanvas[0];
+	
 	// Set and configure canvas context
 	tracksCtx[trackNumber] = trackCanvas[0].getContext('2d');
 	tracksCtx[trackNumber].strokeStyle = 'white';
-	// Link trackCanvas to main canvas
-	canvas.parentNode.appendChild(trackCanvas[0]);
+	trackTimeCtx[trackNumber] = trackTimeCanvas[0].getContext('2d');
 
-	trackCanvas[0].addEventListener("mousedown", function(event) {
+	// Link trackCanvas to main canvas
+	trackCanvasContainer[0].appendChild(trackCanvas[0]);
+	trackCanvasContainer[0].appendChild(trackTimeCanvas[0]);
+	//tdCanvas.appendChild(trackCanvasContainer[0]);
+	
+	tdCanvas.appendChild(trackCanvas[0]);
+	tdCanvas.appendChild(trackTimeCanvas[0]);
+
+	trackTimeCanvas[0].addEventListener("mousedown", function(event) {
         var mousePos = getMousePos(trackCanvas[0], event);
         // will compute time from mouse pos and start playing from there...
         jumpTo(mousePos);
@@ -413,11 +557,14 @@ function createTrackCanvas(trackNumber) {
 
 function deleteTracksCanvas() {
 	// Remove canvas loaded for each track
-	var i = 0;
 	for ( var i = 0; i < tracksCanvas.length; i++) {
 		tracksCanvas[i].remove();
 	}
+	for ( var i = 0; i < tracksTimeCanvas.length; i++) {
+		tracksTimeCanvas[i].remove();
+	}
 	tracksCanvas = [];
+	tracksTimeCanvas = []
 }
 
 function getMousePos(canvas, evt) {
@@ -446,7 +593,7 @@ function getMousePos(canvas, evt) {
     // x - ?
     pauseAllTracks();
     var totalTime = buffers[0].duration;
-    var startTime = (mousePos.x * totalTime) / frontCanvas.width;
+    var startTime = (mousePos.x * totalTime) / SAMPLE_WIDTH;
 	elapsedTimeSinceStart = startTime;
     playAllTracks(startTime);
  }
@@ -459,24 +606,32 @@ function animateTime() {
 
 
         var totalTime;
-
-        frontCtx.clearRect(0, 0, canvas.width, canvas.height);
-        frontCtx.fillStyle = 'white';
-        frontCtx.font = '14pt Arial';
-        frontCtx.fillText(elapsedTimeSinceStart.toPrecision(4), 100, 20);
+		
+		trackTimeCtx[0].clearRect(0, 0, canvas.width, canvas.height);
+        trackTimeCtx[0].fillStyle = 'white';
+        trackTimeCtx[0].font = '14pt Arial';
+        trackTimeCtx[0].fillText(elapsedTimeSinceStart.toPrecision(4), 100, 20);
 
         // at least one track has been loaded
         if (buffers[0] != undefined) {
             var totalTime = buffers[0].duration;
 			if (elapsedTimeSinceStart <= totalTime) {
-				var x = elapsedTimeSinceStart * canvas.width / totalTime;
+				var x = elapsedTimeSinceStart * SAMPLE_WIDTH/ totalTime;
 
-				frontCtx.strokeStyle = "white";
-				frontCtx.lineWidth = 3;
-				frontCtx.beginPath();
-				frontCtx.moveTo(x, 0);
-				frontCtx.lineTo(x, canvas.height);
-				frontCtx.stroke();
+				
+				
+				for (var i=0; i < trackTimeCtx.length;i++) {
+					if (i > 0) {
+						trackTimeCtx[i].clearRect(0, 0, canvas.width, canvas.height);
+					}
+					trackTimeCtx[i].strokeStyle = "white";
+					trackTimeCtx[i].lineWidth = 3;
+					trackTimeCtx[i].beginPath();
+					trackTimeCtx[i].moveTo(x, 0);
+					trackTimeCtx[i].lineTo(x, canvas.height);
+					trackTimeCtx[i].stroke();
+				}
+				
 
 				elapsedTimeSinceStart += delta;
 				lastTime = currentTime;
@@ -484,7 +639,7 @@ function animateTime() {
 			} else if (loop == true) {
 				// End of song and loop activated, restart playing song from beginning
 				stopAllTracks();
-				playFrom(0);
+				playAllTracks(0);
 			} else {
 				// End of song and loop deactivated, stop playing
 				stopAllTracks();
@@ -513,6 +668,7 @@ function playAllTracks(startTime) {
 	//if (playedOnce == false) {
 		buildGraph(buffers);
 	//}
+	animateTime();
 	// Start playing song
     playFrom(startTime);
 }
@@ -627,7 +783,7 @@ function muteUnmuteTrack(trackNumber) {
 	console.log("mute/unmute track " + trackNumber);
     var b = document.querySelector("#mute" + trackNumber);
 		var volumeGlyphIconSpan = $("#mute" + trackNumber + " .glyphicon");
-    if (trackVolumeNodes[trackNumber].gain.value == 1) {
+    if (trackVolumeNodes[trackNumber].gain.value > 0) {
         trackVolumeNodes[trackNumber].gain.value = 0;
 		volumeGlyphIconSpan.addClass("glyphicon-volume-off");
 		volumeGlyphIconSpan.removeClass("glyphicon-volume-up");
@@ -706,6 +862,30 @@ $(document).ready(function() {
 		loadTrackList($(this).attr('value'));
 	});
 	
+	$("#track-effect").on("click", "li a", function(event){
+		console.log('Change effect');
+		$("#track-effect-value").text($(this).text());
+		changeEffect(parseInt($(this).attr('data-effect-id')));
+	});
+	
+	$("#brecord").click(function() {
+		toggleRecording(this);
+		if (recording == false) {
+			$(this).css({ 'color' : 'red'});
+			$("#bdownload")[0].disabled = false;
+			recording = true;
+		}
+		else {
+			$(this).css({ 'color' : 'white'});
+			recording = false;
+		}
+	});
+	
+	$("#bdownload").click(function() {
+		saveAudio();
+		$("#brecord").css({ 'color' : 'white'});
+		recording = false;
+	});
 });
 
 // http://css.dzone.com/articles/exploring-html5-web-audio
@@ -745,124 +925,4 @@ $(document).ready(function() {
 	
 	
 	
-// Drag n drop
-FileUploadCtrl.$inject = ['$scope']
-function FileUploadCtrl(scope) {
-    //============== DRAG & DROP =============
-    // source for drag&drop: http://www.webappers.com/2011/09/28/drag-drop-file-upload-with-html5-javascript/
-    var dropbox = document.getElementById("dropbox")
-    scope.dropText = 'Déposez vos fichiers ici'
-
-    // init event handlers
-    function dragEnterLeave(evt) {
-        evt.stopPropagation()
-        evt.preventDefault()
-        scope.$apply(function(){
-            scope.dropText = 'Drop files here...'
-            scope.dropClass = ''
-        })
-    }
-    dropbox.addEventListener("dragenter", dragEnterLeave, false)
-    dropbox.addEventListener("dragleave", dragEnterLeave, false)
-    dropbox.addEventListener("dragover", function(evt) {
-        evt.stopPropagation()
-        evt.preventDefault()
-        var clazz = 'not-available'
-        var ok = evt.dataTransfer && evt.dataTransfer.types && evt.dataTransfer.types.indexOf('Files') >= 0
-        scope.$apply(function(){
-            scope.dropText = ok ? 'Déposez vos fichiers ici' : 'Seuls les fichiers sont autorisés'
-            scope.dropClass = ok ? 'over' : 'not-available'
-        })
-    }, false)
-    dropbox.addEventListener("drop", function(evt) {
-        console.log('drop evt:', JSON.parse(JSON.stringify(evt.dataTransfer)))
-        evt.stopPropagation()
-        evt.preventDefault()
-        scope.$apply(function(){
-            scope.dropText = 'Déposez vos fichiers ici'
-            scope.dropClass = ''
-        })
-        var files = evt.dataTransfer.files
-        if (files.length > 0) {
-            scope.$apply(function(){
-				console.log('scope files');
-				console.log(scope.files);
-				if (scope.files == undefined) {
-					scope.files = [];
-				}
-                for (var i = 0; i < files.length; i++) {
-                    scope.files.push(files[i])
-                }
-            })
-        }
-    }, false)
-    //============== DRAG & DROP =============
-
-    scope.setFiles = function(element) {
-    scope.$apply(function(scope) {
-      console.log('files:', element.files);
-      // Turn the FileList object into an Array
-        scope.files = []
-        for (var i = 0; i < element.files.length; i++) {
-          scope.files.push(element.files[i])
-        }
-      scope.progressVisible = false
-      });
-    };
-
-    scope.uploadFile = function() {
-        var fd = new FormData()
-		fd.append('title', $('#uploadtitle').val());
-        for (var i in scope.files) {
-            fd.append('uploadedfile', scope.files[i])
-        }
-        var xhr = new XMLHttpRequest()
-        xhr.upload.addEventListener("progress", uploadProgress, false)
-        xhr.addEventListener("load", uploadComplete, false)
-        xhr.addEventListener("error", uploadFailed, false)
-        xhr.addEventListener("abort", uploadCanceled, false)
-        xhr.open("POST", "/upload")
-        scope.progressVisible = true
-        xhr.send(fd)
-    }
-
-    function uploadProgress(evt) {
-        scope.$apply(function(){
-            if (evt.lengthComputable) {
-                scope.progress = Math.round(evt.loaded * 100 / evt.total)
-            } else {
-                scope.progress = 'unable to compute'
-            }
-        })
-    }
-
-    function uploadComplete(evt) {
-        /* This event is raised when the server send back a response */
-        alert("Titre envoyé avec succès.");
-		
-		// Add song to select
-		var uploadedTitle = $("#uploadtitle").val();
-		$("<option value='"+uploadedTitle+"'>"+uploadedTitle+"</option>").appendTo($("#song"));
-		
-		// Clear upload form
-		$("#uploadtitle").val("");
-		scope.$apply(function(){
-			scope.files = [];
-            scope.progressVisible = false
-        })
-    }
-
-    function uploadFailed(evt) {
-        alert("Une erreur est survenue durant l'envoi.")
-    }
-
-    function uploadCanceled(evt) {
-        scope.$apply(function(){
-            scope.progressVisible = false
-        })
-        alert("L'envoi à été annulé ou le navigateur a fermé la connexion, veuillez réessayer d'envoyer vos fichiers.")
-    }
-}
-
-
 

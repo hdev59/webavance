@@ -1,0 +1,169 @@
+#tracksCanvas {
+		width: 800px;
+		height: 400px;
+		margin: 0 auto;
+		position: relative;
+		float:right;
+}
+			
+			#tracks {
+				margin: 0 0;
+				position: relative;
+				float:left;
+				width:340px;
+			}
+			
+			.trackCanvas {
+				
+				background:black;
+			}
+			
+			.trackCanvasContainer {
+				position:relative;
+				margin: 0 auto;
+
+			}
+			
+			.trackCanvas, .trackTimeCanvas {
+				position:absolute;
+				top:0;
+				left:0;
+			}
+			
+			#frequency-spectrum-canvas {
+				position: relative;
+				float:right;
+				top:10px;
+				right:15px;
+			}
+			
+			.trackDiv {
+				height:100px;
+				border: 1px black solid;
+			}
+			
+			.green {
+				color:green;
+			}
+			
+			.red {
+				color:red;
+			}
+			
+			.vertical-align {
+				/* Internet Explorer 10 */
+				display:-ms-flexbox;
+				-ms-flex-pack:center;
+				-ms-flex-align:center;
+
+				/* Firefox */
+				display:-moz-box;
+				-moz-box-pack:center;
+				-moz-box-align:center;
+
+				/* Safari, Opera, and Chrome */
+				display:-webkit-box;
+				-webkit-box-pack:center;
+				-webkit-box-align:center;
+
+				/* W3C */
+				display:box;
+				box-pack:center;
+				box-align:center;
+			}
+            .sample {
+                border: solid white 1px;
+                background:black;
+            }
+		
+			#track-controls, #track-controls-left-panel {
+				height:120px;
+			}
+			
+			#track-controls {
+				border: 1px solid #e1e1e8;
+				border-radius: 4px;
+				background-image:linear-gradient(to bottom,#6277E4 0,#6f5499 100%);
+			}
+			
+			#track-controls-left-panel {
+				float:left;
+				
+				padding-left:15px;
+			}
+			
+			#dragndrop {
+				background: yellow;
+				width:300px;
+				height: 300px;
+			}
+			
+			table { border-collapse: collapse; }
+			
+			.percent {
+				position: absolute; width: 300px; height: 14px; z-index: 1; text-align: center; font-size: 0.8em; color: white;
+			}
+			.progress-bar {
+				width: 300px; height: 14px;
+				border-radius: 10px;
+				border: 1px solid #CCC;
+				background-image: -webkit-gradient(linear, left top, left bottom, from(#6666cc), to(#4b4b95));
+				border-image: initial;
+			}
+			.uploaded {
+				padding: 0;
+				height: 14px;
+				border-radius: 10px;
+				background-image: -webkit-gradient(linear, left top, left bottom, from(#66cc00), to(#4b9500));
+				border-image: initial;
+			}
+			.dropbox {
+				width: 15em;
+				height: 3em;
+				border: 2px solid #DDD;
+				border-radius: 8px;
+				background-color: #FEFFEC;
+				text-align: center;
+				color: #BBB;
+				font-size: 2em;
+				font-family: Arial, sans-serif;
+			}
+			.dropbox span {
+				margin-top: 0.9em;
+				display: block;
+			}
+			.dropbox.not-available {
+				background-color: #F88;
+			}
+			.dropbox.over {
+				background-color: #bfb;
+			}
+
+			#track-table thead tr th {
+				text-align:center;
+			}
+			
+			.track-slider {
+			}
+			
+			
+			.track-td-mute {
+				width:5%;
+			}
+			.track-td-name {
+				width:15%;
+				text-align:center;
+			}
+			
+			.track-td-volume{
+				width:15%;
+				margin-left: 40px !important;
+			}
+			
+			.track-td-canvas {
+				position:relative;
+				height:110px;
+				margin-left:20px;
+				text-align:center;
+			}
+			
