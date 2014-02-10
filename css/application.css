@@ -14,8 +14,8 @@
 			}
 			
 			.trackCanvas {
-				
-				background:black;
+
+				background-image: linear-gradient(to bottom,#DFE0E9 0,rgb(197, 197, 197) 100%);
 			}
 			
 			.trackCanvasContainer {
@@ -149,20 +149,23 @@
 			
 			.track-td-mute {
 				width:5%;
+				padding-top:30px !important;
 			}
 			.track-td-name {
 				width:15%;
 				text-align:center;
+				padding-top:30px !important;
 			}
 			
 			.track-td-volume{
 				width:15%;
 				margin-left: 40px !important;
+				padding-top:40px !important;
 			}
 			
 			.track-td-canvas {
 				position:relative;
-				height:110px;
+				height:115px;
 				margin-left:20px;
 				text-align:center;
 			}

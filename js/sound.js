@@ -467,11 +467,11 @@ resetAllBeforeLoadingANewSong();
 			var tdMute = document.createElement('td');
 			tdMute.className = 'track-td-mute';
 			var tdName = document.createElement('td');
-			tdName.className = 'track-td-name';
+			tdName.className = 'track-td-name ';
 			var tdCanvas = document.createElement('td');
 			tdCanvas.className = 'track-td-canvas';
 			var tdVolume = document.createElement('td');
-			tdVolume.className = 'track-td-volume';
+			tdVolume.className = 'track-td-volume ';
 			
 			tdVolume.innerHTML = "<div class='ui-slider' class='trackVolumeSlider' id='trackVolumeSlider"  + trackNumber + "'></div>";
 			tdName.innerHTML = instrument.name;
