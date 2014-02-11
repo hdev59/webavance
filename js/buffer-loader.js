@@ -18,7 +18,7 @@ BufferLoader.prototype.loadBuffer = function(url, index) {
     var loader = this;
 
     request.onload = function() {
-		$.blockUI("Veuillez patienter pendant le chargement...");
+		$.blockUI({ message: '<img src="/images/track_loader.gif" /><h6>Veuillez patienter pendant le chargement...</h6>' });
         // Asynchronously decode the audio file data in request.response
         loader.context.decodeAudioData(
                 request.response,
