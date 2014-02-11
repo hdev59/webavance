@@ -84,8 +84,8 @@
 			
 			#track-controls {
 				border: 1px solid #e1e1e8;
-				border-radius: 4px;
-				background-image:linear-gradient(to bottom,#6277E4 0,black 100%);
+				border-radius: 6px;
+				background-image:linear-gradient(to bottom,#6277E4 0,rgb(238, 238, 238) 100%);
 			}
 			
 			#track-controls-left-panel {
