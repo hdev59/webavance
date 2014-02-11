@@ -1,3 +1,7 @@
+.blockUI .blockMsg .blockPage{
+	width:520px;
+}
+
 #tracksCanvas {
 		width: 800px;
 		height: 400px;
