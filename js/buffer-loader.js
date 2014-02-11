@@ -18,7 +18,7 @@ BufferLoader.prototype.loadBuffer = function(url, index) {
     var loader = this;
 
     request.onload = function() {
-		
+		$.blockUI("Veuillez patienter pendant le chargement...");
         // Asynchronously decode the audio file data in request.response
         loader.context.decodeAudioData(
                 request.response,
@@ -60,6 +60,7 @@ BufferLoader.prototype.loadBuffer = function(url, index) {
 					$("#setProgress").click();
                     if ((loader.loadCount + 1) * (100 / loader.urlList.length) == 100) {
 						$("#setComplete").click();
+						$.unblockUI();
 					}
 					if (++loader.loadCount == loader.urlList.length)
                         loader.onload(loader.bufferList);
