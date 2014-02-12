@@ -326,6 +326,7 @@ function resetEffectNodes() {
 }
 
 var bufferLoader;
+
 function loadAllSoundSamples(tracks) {
 
 
@@ -629,8 +630,6 @@ function animateTime() {
 				stopAllTracks();
 				playAllTracks(0);
 			} else {
-				// clear progress and time in canvas
-				resetTime();
 				// End of song and loop deactivated, stop playing
 				stopAllTracks();
 			}
@@ -691,22 +690,26 @@ function playFrom(startTime) {
 
 function stopAllTracks() {
 	console.log("stopAllTracks");
+	// clear progress and time in canvas
+	resetTime();
+	// clear frequency spectrum canvas
+	resetFrequencySpectrum();
     samples.forEach(function(s) {
 		console.log(s);
 		// destroy the nodes
-		console.log("playbackState : " + s.playbackState);
 		if (s.playbackState == undefined || s.playbackState != s.FINISHED_STATE) {
-			console.log('stopping sample');
 			s.stop(0);
 			s.disconnect(0);
 		}
     });
+	// Handle buttons
     buttonStop.disabled = true;
     buttonPlay.disabled = false;
 	if ($("#bplaypause span").hasClass('glyphicon-pause')) {
 		$("#bplaypause span").removeClass('glyphicon-pause');
 	}
 	$("#bplaypause span").addClass('glyphicon-play');
+	// Reset timer
     elapsedTimeSinceStart = 0;
     paused = true;
 }
@@ -808,10 +811,13 @@ function setChannelCountToStereo() {
 
 
 $(document).ready(function() {
+
+	// Play/pause button click event
 	$("#bplaypause").click(function() {
 		playOrPause($(this));
 	});
 	
+	// Switch mono/stereo button click event
 	$("#bmonostereo").click(function() {
 		if ($(this).text() == "stereo") {
 			setChannelCountToStereo();
@@ -822,10 +828,29 @@ $(document).ready(function() {
 		}
 	});
 	
-	$(".ui-slider-range").change(function() {
-		console.log("Modified sound : " + $(this).css('width'));
+	// Record button click event
+	$("#brecord").click(function() {
+		toggleRecording(this);
+		if (recording == false) {
+			$(this).css({ 'color' : 'red'});
+			$("#bdownload")[0].disabled = false;
+			recording = true;
+		}
+		else {
+			$(this).css({ 'color' : 'white'});
+			recording = false;
+		}
 	});
 	
+	// Download recorded sample click event
+	$("#bdownload").click(function() {
+		// Save audio sample - recorder.main.js
+		saveAudio();
+		$("#brecord").css({ 'color' : 'white'});
+		recording = false;
+	});
+	
+	// Create master volume Node slider (flatUI)
 	masterVolumeSlider = $("#masterVolumeSlider");
     if (masterVolumeSlider.length) {
       masterVolumeSlider.slider({
@@ -841,79 +866,71 @@ $(document).ready(function() {
       }).addSliderSegments(masterVolumeSlider.slider("option").max);
     }
 	
+	// Lightbox file upload
 	$("#open-upload").fancybox();
 	
-	
-	
-	
+	// Track change link clicked event
 	$("#track-list").on("click", "li a", function(event){
 		$("#track-list-value").text($(this).attr('value'));
 		loadTrackList($(this).attr('value'));
 	});
 	
+	// Track effect link clicked event
 	$("#track-effect").on("click", "li a", function(event){
 		console.log('Change effect');
 		if ($(this).text() == 'No effect') {
 			$("#track-effect-value").text('Effect');
+		} else {
+			$("#track-effect-value").text($(this).text());
 		}
-		$("#track-effect-value").text('Effect');
 		changeEffect(parseInt($(this).attr('data-effect-id')));
 	});
-	
-	$("#brecord").click(function() {
-		toggleRecording(this);
-		if (recording == false) {
-			$(this).css({ 'color' : 'red'});
-			$("#bdownload")[0].disabled = false;
-			recording = true;
-		}
-		else {
-			$(this).css({ 'color' : 'white'});
-			recording = false;
-		}
-	});
-	
-	$("#bdownload").click(function() {
-		saveAudio();
-		$("#brecord").css({ 'color' : 'white'});
-		recording = false;
-	});
+
 });
 
-// http://css.dzone.com/articles/exploring-html5-web-audio
-	function initializeFrequencySpectrum() {
-		frequencySpectrumCanvas = document.querySelector("#frequency-spectrum-canvas");
-		frequencySpectrumCtx = frequencySpectrumCanvas.getContext('2d');
-		var gradient = frequencySpectrumCtx.createLinearGradient(0,0,0,FREQUENCY_SPECTRUM_HEIGHT);
-		gradient.addColorStop(1,'#000000');
-		gradient.addColorStop(0.75,'#ff0000');
-		gradient.addColorStop(0.25,'#ffff00');
-		gradient.addColorStop(0,'#ffffff');
-
-		// when the javascript node is called
-		// we use information from the analyzer node
-		// to draw the volume
-		javascriptNode.onaudioprocess = function() {
-			// get the average for the first channel
-			var array =  new Uint8Array(analyser.frequencyBinCount);
-			analyser.getByteFrequencyData(array);
-
-			// clear the current state
-			frequencySpectrumCtx.clearRect(0, 0, FREQUENCY_SPECTRUM_WIDTH, FREQUENCY_SPECTRUM_HEIGHT);
-
-			// set the fill style
-			frequencySpectrumCtx.fillStyle=gradient;
-			drawSpectrum(array);
-		}
+function resetFrequencySpectrum() {
+	if (frequencySpectrumCtx) {
+		frequencySpectrumCtx.clearRect(0, 0, FREQUENCY_SPECTRUM_WIDTH, FREQUENCY_SPECTRUM_HEIGHT);
 	}
+}
 
-	function drawSpectrum(array) {
+// http://css.dzone.com/articles/exploring-html5-web-audio
+// Draw frequency spectrum to canvas frequency-spectrum-canvas
+function initializeFrequencySpectrum() {
+	frequencySpectrumCanvas = document.querySelector("#frequency-spectrum-canvas");
+	frequencySpectrumCtx = frequencySpectrumCanvas.getContext('2d');
+	var gradient = frequencySpectrumCtx.createLinearGradient(0,0,0,FREQUENCY_SPECTRUM_HEIGHT);
+	gradient.addColorStop(1,'#000000');
+	gradient.addColorStop(0.75,'#ff0000');
+	gradient.addColorStop(0.25,'#ffff00');
+	gradient.addColorStop(0,'#ffffff');
+
+	// when the javascript node is called
+	// we use information from the analyzer node
+	// to draw the volume
+	javascriptNode.onaudioprocess = function() {
+		// get the average for the first channel
+		var array =  new Uint8Array(analyser.frequencyBinCount);
+		analyser.getByteFrequencyData(array);
+		
+		// clear the current state
+		resetFrequencySpectrum();
+
+		// set the fill style
+		frequencySpectrumCtx.fillStyle=gradient;
+		drawSpectrum(array);
+	}
+}
+
+function drawSpectrum(array) {
+	if (paused == false) {
 		for ( var i = 0; i < (array.length); i++ ){
 			var value = array[i];
 			//console.log("Spectrum value : " + value);
 			frequencySpectrumCtx.fillRect(i*2,FREQUENCY_SPECTRUM_HEIGHT * 2-value,1,FREQUENCY_SPECTRUM_HEIGHT);
 		}
 	}
+}
 	
 	
 	
