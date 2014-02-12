@@ -35,9 +35,6 @@ var buttonPlay, buttonStop, buttonLoop, buttonMonoStereo;
 // divTrack containing track sample, mute button, volume slider
 var divTrack;
 
-var canvas, ctx;
-var frontCanvas, frontCtx;
-
 var tracksCanvas = [];
 var tracksTimeCanvas = [];
 
@@ -271,22 +268,6 @@ function init() {
 	
     divTrack = document.getElementById("tracks");
 
-
-    // canvas where we draw the samples
-    canvas = document.querySelector("#myCanvas");
-    ctx = canvas.getContext('2d');
-
-    // Create a second canvas
-    frontCanvas = document.createElement('canvas');
-    frontCanvas.id = 'frontCanvas';
-    // Add it as a second child of the mainCanvas parent.
-    canvas.parentNode.appendChild(frontCanvas);
-    // make it same size as its brother
-    frontCanvas.height = canvas.height;
-    frontCanvas.width = canvas.width;
-
-    frontCtx = frontCanvas.getContext('2d');
-
     // Init audio context
     context = initAudioContext();
 
@@ -458,8 +439,6 @@ resetAllBeforeLoadingANewSong();
     xhr.open('GET', "track/" + songName, true);
     xhr.onload = function(e) {
         var track = JSON.parse(this.response);
-        // resize canvas depending on number of samples
-        resizeSampleCanvas(track.instruments.length);
         var i = 0;
 		var tableBody = document.querySelector("#track-table tbody");
         track.instruments.forEach(function(instrument, trackNumber) {
@@ -616,7 +595,7 @@ function animateTime() {
 
         var totalTime;
 		
-		trackTimeCtx[0].clearRect(0, 0, canvas.width, canvas.height);
+		trackTimeCtx[0].clearRect(0, 0, SAMPLE_WIDTH, SAMPLE_HEIGHT);
         trackTimeCtx[0].fillStyle = 'black';
         trackTimeCtx[0].font = '14pt Arial';
         trackTimeCtx[0].fillText(elapsedTimeSinceStart.toPrecision(4), 100, 20);
@@ -631,13 +610,13 @@ function animateTime() {
 				
 				for (var i=0; i < trackTimeCtx.length;i++) {
 					if (i > 0) {
-						trackTimeCtx[i].clearRect(0, 0, canvas.width, canvas.height);
+						trackTimeCtx[i].clearRect(0, 0, SAMPLE_WIDTH, SAMPLE_HEIGHT);
 					}
 					trackTimeCtx[i].strokeStyle = "black";
 					trackTimeCtx[i].lineWidth = 3;
 					trackTimeCtx[i].beginPath();
 					trackTimeCtx[i].moveTo(x, 0);
-					trackTimeCtx[i].lineTo(x, canvas.height);
+					trackTimeCtx[i].lineTo(x, SAMPLE_HEIGHT);
 					trackTimeCtx[i].stroke();
 				}
 				
@@ -656,15 +635,6 @@ function animateTime() {
 		}
 	}
 	requestAnimFrame(animateTime);
-}
-
-function resetTime() {
-	frontCtx.clearRect(0, 0, canvas.width, canvas.height);
-}
-
-function resizeSampleCanvas(numTracks) {
-    canvas.height = (parseInt(SAMPLE_HEIGHT) + parseInt(SAMPLE_MARGIN)) * numTracks;
-    frontCanvas.height = canvas.height;
 }
 
 function loadSong() {
@@ -731,7 +701,6 @@ function stopAllTracks() {
 	$("#bplaypause span").addClass('glyphicon-play');
     elapsedTimeSinceStart = 0;
     paused = true;
-	resetTime();
 }
 
 function playOrPause(button) {
@@ -879,7 +848,7 @@ $(document).ready(function() {
 		if ($(this).text() == 'No effect') {
 			$("#track-effect-value").text('Effect');
 		}
-		$("#track-effect-value").text($(this).text());
+		$("#track-effect-value").text('Effect');
 		changeEffect(parseInt($(this).attr('data-effect-id')));
 	});
 	
