@@ -879,6 +879,7 @@ $(document).ready(function() {
 		if ($(this).text() == 'No effect') {
 			$("#track-effect-value").text('Effect');
 		}
+		$("#track-effect-value").text($(this).text());
 		changeEffect(parseInt($(this).attr('data-effect-id')));
 	});
 	
