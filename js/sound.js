@@ -325,6 +325,7 @@ function resetAllBeforeLoadingANewSong() {
     stopAllTracks();
     buttonPlay.disabled = true;
 	buttonLoop.disabled = true;
+	$("#track-effect-value").text('Effect');
     $("#track-table tbody")[0].innerHTML = "";
 	$("#track-table").css({'display' : 'block'});
     /*
@@ -875,7 +876,9 @@ $(document).ready(function() {
 	
 	$("#track-effect").on("click", "li a", function(event){
 		console.log('Change effect');
-		$("#track-effect-value").text($(this).text());
+		if ($(this).text() == 'No effect') {
+			$("#track-effect-value").text('Effect');
+		}
 		changeEffect(parseInt($(this).attr('data-effect-id')));
 	});
 	

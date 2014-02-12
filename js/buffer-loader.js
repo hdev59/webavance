@@ -45,7 +45,10 @@ BufferLoader.prototype.loadBuffer = function(url, index) {
 			console.log('Artist ' + artist);
 			console.log('Album ' + album);
 			console.log('Year ' + year);
-			$('#track-info-content-' + index)[0].innerHTML = '<p>Album : ' + album + '</p><p> Artist : ' + artist + '</p>';
+			if (artist != "") {
+				querySparqlArtist(artist);
+			}
+			$('#track-info-content-' + index)[0].innerHTML = '<p>Album : ' + album + '</p><p> Artist : ' + artist + '</p><p>Year : ' + year + "</p><p>Title : " + title + "</p>";
 			
 			trackTags[index] = { 'album' : album, 'artist' : artist, 'title' : title, 'year' : year };
 		} else {
@@ -119,6 +122,38 @@ BufferLoader.prototype.loadBuffer = function(url, index) {
 
     request.send();
 }
+
+var sparqlResults;
+
+function querySparqlArtist(artist) {
+	var query = encodeURIComponent(artist).replace(/%20/g,'+').replace(/%00/g,'');
+	var  queryUrl = "http://dbpedia.org/sparql?default-graph-uri=http%3A%2F%2Fdbpedia.org&query=select+%3Fy+%3Fz+where%0D%0A+%7B+%3Fr+%3Fy+%3Fz.%0D%0A+++%3Fr+foaf%3Aname+%22"+query+"%22%40en%7D&format=application%2Fsparql-results%2Bjson&timeout=&debug=on"
+
+	$.ajax({
+	  dataType: "json",
+	  url: queryUrl,
+	  async: false,
+	  error : errorQuery,
+	  success: successQuery
+	});
+	
+	function successQuery(data) {
+		sparqlResults = data;
+	}
+	
+	function errorQuery(e) {
+		if (e.statusText == 'OK') {
+			sparqlResults = e.responseText;
+		}
+	}
+	
+	//console.log("SPARQL QUERY RESULTS");
+	//console.log(sparqlResults);
+
+}
+
+
+
 
 BufferLoader.prototype.load = function() {
     // M.BUFFA added these two lines.
