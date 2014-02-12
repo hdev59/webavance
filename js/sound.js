@@ -629,12 +629,20 @@ function animateTime() {
 				stopAllTracks();
 				playAllTracks(0);
 			} else {
+				// clear progress and time in canvas
+				resetTime();
 				// End of song and loop deactivated, stop playing
 				stopAllTracks();
 			}
 		}
 	}
 	requestAnimFrame(animateTime);
+}
+
+function resetTime() {
+	for (var i=0; i < trackTimeCtx.length;i++) {
+		trackTimeCtx[i].clearRect(0, 0, SAMPLE_WIDTH, SAMPLE_HEIGHT);
+	}
 }
 
 function loadSong() {
