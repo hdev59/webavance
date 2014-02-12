@@ -30,6 +30,27 @@ BufferLoader.prototype.loadBuffer = function(url, index) {
 				backgroundColor:'#fff',
 				cursor:		'wait'
 			}});
+		
+		var dv = new jDataView(request.response);
+		console.log("======== jDataView =========");
+		console.log(dv);
+			
+		if (dv.getString(3, dv.byteLength - 128) == 'TAG') {
+			console.log('tag found');
+			var title = dv.getString(30, dv.tell());
+			var artist = dv.getString(30, dv.tell());
+			var album = dv.getString(30, dv.tell());
+			var year = dv.getString(4, dv.tell());
+			console.log('Title ' + title);
+			console.log('Artist ' + artist);
+			console.log('Album ' + album);
+			console.log('Year ' + year);
+			$('#track-info-content-' + index)[0].innerHTML = '<p>Album : ' + album + '</p><p> Artist : ' + artist + '</p>';
+			
+			trackTags[index] = { 'album' : album, 'artist' : artist, 'title' : title, 'year' : year };
+		} else {
+			console.log('tag not found');
+		}
         // Asynchronously decode the audio file data in request.response
         loader.context.decodeAudioData(
                 request.response,
@@ -46,6 +67,9 @@ BufferLoader.prototype.loadBuffer = function(url, index) {
 					ctx = tracksCtx[index],
 					step = Math.ceil(data.length / width),
 					amp = 200;
+					
+					
+					
 					ctx.beginPath();
 					ctx.moveTo(0, height/2 + data[0]);
 					var oldLineWidth = ctx.lineWidth;
@@ -72,9 +96,12 @@ BufferLoader.prototype.loadBuffer = function(url, index) {
                     if ((loader.loadCount + 1) * (100 / loader.urlList.length) == 100) {
 						$("#setComplete").click();
 						$.unblockUI();
+						
 					}
 					if (++loader.loadCount == loader.urlList.length)
                         loader.onload(loader.bufferList);
+						console.log('====== trackTags =========');
+						console.log(trackTags);
                 },
                 function(error) {
                     console.error('decodeAudioData error', error);
@@ -97,6 +124,7 @@ BufferLoader.prototype.load = function() {
     // M.BUFFA added these two lines.
     this.bufferList = new Array();
     this.loadCount = 0;
+	trackTags = [];
     console.log("BufferLoader.prototype.load urlList size = " + this.urlList.length);
     for (var i = 0; i < this.urlList.length; ++i)
         this.loadBuffer(this.urlList[i], i);

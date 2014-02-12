@@ -3,6 +3,8 @@ var recording = false;
 var source = null;
 // Les echantillons prêts à être joués, de toutes les pistes
 var tracks = [];
+var trackTags = [];
+
 var buffers = []; // audio buffers decoded
 var samples = []; // audiograph nodes
 
@@ -472,7 +474,10 @@ resetAllBeforeLoadingANewSong();
 			tdCanvas.className = 'track-td-canvas';
 			var tdVolume = document.createElement('td');
 			tdVolume.className = 'track-td-volume ';
-			
+			var tdInfo = document.createElement('td');
+			tdInfo.className = 'track-td-info';
+			var trackInfos = '<div class="track-info" id="track-info-content-' + trackNumber + '" style="display:none"></div';
+			tdInfo.innerHTML = '<a class="open-track-info" id="open-track-info-'+trackNumber+'" href="#track-info-content-'+ trackNumber + '"><button id="trackInfo' + trackNumber + '" class="btn btn-block btn-lg btn-primary btrackInfo"><span class="glyphicon glyphicon-info-sign"></span></button></a>' + trackInfos; 
 			tdVolume.innerHTML = "<div class='ui-slider' class='trackVolumeSlider' id='trackVolumeSlider"  + trackNumber + "'></div>";
 			tdName.innerHTML = instrument.name;
 			tdMute.innerHTML = "<button id='mute" + trackNumber + "' class='btn btn-block btn-lg btn-primary' onclick='muteUnmuteTrack(" 
@@ -482,10 +487,12 @@ resetAllBeforeLoadingANewSong();
 			
 			column.appendChild(tdMute);
 			column.appendChild(tdName);
+			column.appendChild(tdInfo);
 			column.appendChild(tdVolume);
 			column.appendChild(tdCanvas);
 			
             tableBody.appendChild(column);
+			$("#open-track-info-"+trackNumber).fancybox();
 			var trackVolumeSlider = $("#trackVolumeSlider"+ trackNumber);
 			trackVolumeSlider.attr('data-track-number', trackNumber);
 			trackVolumeSlider.slider({
@@ -857,6 +864,9 @@ $(document).ready(function() {
     }
 	
 	$("#open-upload").fancybox();
+	
+	
+	
 	
 	$("#track-list").on("click", "li a", function(event){
 		$("#track-list-value").text($(this).attr('value'));
